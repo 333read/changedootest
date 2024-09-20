@@ -1,0 +1,51 @@
+{
+  "id": "4660772",
+  "name": "iconfont_vue",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "7008965",
+      "name": "message",
+      "font_class": "message",
+      "unicode": "e70c",
+      "unicode_decimal": 59148
+    },
+    {
+      "icon_id": "41592039",
+      "name": "编码查询",
+      "font_class": "bianmachaxun",
+      "unicode": "e604",
+      "unicode_decimal": 58884
+    },
+    {
+      "icon_id": "577402",
+      "name": "向右1",
+      "font_class": "xiangyou1",
+      "unicode": "e775",
+      "unicode_decimal": 59253
+    },
+    {
+      "icon_id": "1727457",
+      "name": "223保存",
+      "font_class": "baocun",
+      "unicode": "e8c8",
+      "unicode_decimal": 59592
+    },
+    {
+      "icon_id": "4867078",
+      "name": "禁用",
+      "font_class": "jinyong",
+      "unicode": "e650",
+      "unicode_decimal": 58960
+    },
+    {
+      "icon_id": "13401002",
+      "name": "设置",
+      "font_class": "shezhi",
+      "unicode": "e61f",
+      "unicode_decimal": 58911
+    }
+  ]
+}
