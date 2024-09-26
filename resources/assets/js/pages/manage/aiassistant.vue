@@ -3,13 +3,16 @@
         <PageTitle :title="$L('AI助手')"/>
             <div class="aiassistant-wrapper" ref="aiassistantWrapper">
                     <div class="aiassistant-head">
-                            <div class="aiassistant-nav" v-for="(item, key) in ailist"  :key="key">
-                                <div class="common-nav-back portrait" @click="goForward({name: 'manage-application'},true)" ><i class="taskfont">&#xe676;</i></div>
+                            <div class="aiassistant-nav">
+                                <div class="common-nav-back portrait" @click="goForward({name: 'manage-application'},true)" >
+                                    <i class="taskfont">&#xe676;</i>
+                                </div>
                                 <h1>{{$L('AI助手')}}</h1>
-                                <div class="aiassistant-setting" @click="aisetForm(item)">
+                                <div class="aiassistant-setting" @click="aisetForm(item,newselect)">
                                     <Icon type="ios-settings-outline" />
                                 </div>
-                                <div style="margin-left: 20px;">
+
+                                <div class="nav-select">
                                     <el-select v-model="newselect" class="bot-select" @change="onOptionChange" >    
                                             <el-option label="ChatGPT" value="ChatGPT" ></el-option>
                                             <el-option label="Gemini" value="gemini"></el-option>
@@ -18,6 +21,7 @@
                                     </el-select>
                                 </div>
                             </div>
+                            <!-- 历史会话图标 -->
                             <div class="aiassistant-historychat" >
                                 <Icon @click="toggleDrawer" type="ios-clock-outline" />
                             </div> 
@@ -28,30 +32,63 @@
                                 <div v-for="(message, index) in messages" :key="index" class="message">
                                     <!-- 机器人消息 -->
                                         <div v-if="message.isBot" class="message-content bot-message">
-                                        <img v-if="message.avatar" :src="botAvatar" alt="Bot Avatar" class="avatar bot-avatar"/>
-                                        <div class="text-content">
+                                            <img v-if="message.avatar" :src="botAvatar" alt="Bot Avatar" class="avatar bot-avatar"/>
+                                            <div class="text-content">
+                                                <span v-html="sanitizedBotMessage(message.text)"></span>
+                                            </div>
+                                        </div>
+                                        <!-- 用户消息 -->
+                                        <div v-else class="message-content user-message">
+                                            <div class="text-content">
                                             {{ message.text }}
-                                            <span v-if="message.uuid"> (UUID: {{ message.uuid }})</span>
+                                                
+                                            </div>
+                                            <img v-if="message.avatar" :src="message.avatar" alt="User Avatar" class="avatar user-avatar"/>
                                         </div>
-                                        </div>
-                                    <!-- 用户消息 -->
-                                    <div v-else class="message-content user-message">
-                                        <div class="text-content">
-                                        {{ message.text }}
-                                        </div>
-                                        <img v-if="message.avatar" :src="message.avatar" alt="User Avatar" class="avatar user-avatar"/>
-                                    </div>
                                 </div>
                             </div>
 
-                            <div class="chat-input-container">
-                                <Button @click="openModelSelection" style="margin: 3px;">新建会话</Button>
+                            </div>
+
+                            <DrawerOverlay
+                                v-model="drawerVisible" 
+                                placement="right" 
+                                :size="650"
+                                            >
+                                        <div class="ivu-modal-wrap-aiass">
+                                                <div class="ivu-modal-wrap-aiass-title">
+                                                    {{ $L('历史会话记录') }}
+                                                </div>
+                                                <div class="ivu-modal-wrap-aiass-body">
+                                                    <div class="history-list">
+                                                            <div
+                                                                v-for="(session, index) in chatHistory"
+                                                                :key="index"
+                                                                class="history-item"
+                                                                @click="loadChatSession(session)"
+                                                                >
+                                                                <img :src="session.avatar" alt="Bot Avatar" class="history-avatar" />
+                                                                    <div class="history-info">
+                                                                        <div class="history-title">{{ session.title }}</div>
+                                                                        <div class="history-title">{{ session.lastSelect}}</div>
+                                                                        <div class="last-message">{{ session.last_message }}</div>
+                                                                        <div class="last-time">{{ session.lastTime }}</div>
+                                                                    </div>
+                                                            </div>
+                                                    </div>
+                                                </div>
+                                        </div>
+                                </DrawerOverlay>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                                <Button type="primary" @click="openModelSelection" class="new-chat-button">新建会话</Button>
                                         <Modal
                                             title="创建新会话"
                                             v-model="newchat"
                                             :visible.sync="modelDialogVisible"
                                             :closable="false">
-                                            <Select v-model="newselect" size="large" style="width:300px">
+                                            <Select v-model="newselect" size="large" class="new-chat-select">
                                                 <Option v-for="item in aichatList" :value="item.value" :key="item.value">
                                                     {{ item.label }}
                                                 </Option>
@@ -68,44 +105,15 @@
                                         class="user-input"
                                         @keyup.enter.native="sendMessage"
                                     ></el-input>
-                                    
-                                    <li>
-                                    <EPopover
-                                        ref="emoji"
-                                        v-if="!emojiBottom"
-                                        v-model="showEmoji"
-                                        :visibleArrow="false"
-                                        placement="top"
-                                        popperClass="chat-input-emoji-popover">
-                                        <ETooltip slot="reference" ref="emojiTip" :disabled="$isEEUiApp || windowTouch || showEmoji" placement="top" :enterable="false" :content="$L('表情')">
-                                            <i class="taskfont">&#xe7ad;</i>
-                                        </ETooltip>
-                                        <ChatEmoji v-if="showEmoji" @on-select="onSelectEmoji" :searchKey="emojiQuickKey"/>
-                                    </EPopover>
-                                    <ETooltip v-else ref="emojiTip" :disabled="$isEEUiApp || windowTouch || showEmoji" placement="top" :enterable="false" :content="$L('表情')">
-                                        <i class="taskfont" @click="showEmoji=!showEmoji">&#xe7ad;</i>
-                                    </ETooltip>
-                                </li>
 
-                                <!-- @ # -->
-                                <li>
-                                    <ETooltip placement="top" :disabled="$isEEUiApp || windowTouch" :enterable="false" :content="$L('选择成员')">
-                                        <i class="taskfont" @click="onToolbar('user')">&#xe78f;</i>
-                                    </ETooltip>
-                                </li>
-                                <li>
-                                    <ETooltip placement="top" :disabled="$isEEUiApp || windowTouch" :enterable="false" :content="$L('选择任务')">
-                                        <i class="taskfont" @click="onToolbar('task')">&#xe7d6;</i>
-                                    </ETooltip>
-                                </li>
                                 <!-- 录音图标 -->
-                                 <li>
+                                <li>
                                     <ETooltip placement="top" :disabled="$isEEUiApp || windowTouch" :enterable="false" :content="$L('点击录音')">
                                         <i v-if="sendClass !== 'recorder'" class="taskfont">&#xe609;</i>
                                         
                                     </ETooltip>
-                                 </li>
-                              <!-- 图片文件 -->
+                                </li>
+                                <!-- 图片文件 -->
                                 <li>
                                     <EPopover
                                         ref="more"
@@ -138,43 +146,21 @@
                                     </button>
                                 </li>
                                     
-                                </div>
-                            </div>
-
-                            <el-drawer
-                                            title="历史会话"
-                                            :visible.sync="drawerVisible"
-                                            direction="rtl"
-                                            :close-on-click-modal="false"
-                                            >
-                                            <div class="history-list">
-                                                <div
-                                                v-for="(session, index) in chatHistory"
-                                                :key="index"
-                                                class="history-item"
-                                                @click="loadChatSession(session)"
-                                                >
-                                                <img :src="session.avatar" alt="Bot Avatar" class="avatar history-avatar" />
-                                                    <div class="history-info">
-                                                    <div class="history-title">{{ session.title }}</div>
-                                                    <div class="last-message">{{ session.lastMessage }}</div>
-                                                    <div class="last-time">{{ session.lastTime }}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </el-drawer>
-                        </div>
                     </div>
             </div>
         </div>
 </template>
 
 <script>
-    import axios from "axios";
-    import ChatEmoji from "./components/ChatInput/emoji";
+    import DOMPurify from "dompurify";
+    import renderMarkdown from "./aisetting/utils/markdown";
+    import { mapState } from 'vuex';
+    import DrawerOverlay from '../../components/DrawerOverlay'
     export default {
-        name: 'ChatInput',
-        comments:{ChatEmoji},
+        components:{
+            DrawerOverlay,
+        },
+        
         props: {
             disabled: {
             type: Boolean,
@@ -195,12 +181,17 @@
         },
         data(){
             return {
+                userInput: "",// 20240926
+                socket: null, // WebSocket instance
+                slug: "workspace-for-user-1", // Example slug
+                session_id: 0, // Example session ID
                 users:[], // by hss20240903
                 messages: [], // by hss20240911
                 userInput: "",  // by hss20240911
                 newchat: false,
                 modelDialogVisible: false, 
                 newselect:'',
+                showMore: false,
                 chatHistory: [], // 存储历史会话记录
                 drawerVisible: false,
                 botAvatar:'/images/avatar/default_anything.png',
@@ -227,49 +218,52 @@
 
                     },
                 ],
-                ailist: [
-                    {
-                        value: 'chatgpt',
-                        label: 'ChatGPT',
-                        avatar: '/images/avatar/default_openai.png'
-                    }
-                ],
                 aiformVisible:false,
                 password: '',
                 pwdObj: { pwdType: 'password'},
                 valuemol: '',
-                valuemolg: '',
-                valuemolc: '',
-                valuemolw: '',
-                valuemolq: '',
-                valuemolu: '',
-                valuemolm: '',
-                valueproxy: '',
 
-                showMenu: false,
-                showMore: false,
-                showEmoji: false,
-
-                emojiQuickShow: false,
-                emojiQuickKey: '',
-                emojiQuickItems: [],
             }
         },
 
+
+        //0922
+        created() {
+            // 获取路由参数
+            const { newselect } = this.$route.params;
+            if (newselect) {
+                this.newselect = newselect; // 设置初始值
+            }
+        },
+
+
         mounted() {
+
+            this.socket = new WebSocket('ws://localhost:3333/ws');
+
+            this.socket.onmessage = (event) => {
+                const response = JSON.parse(event.data); //将回答内容转换为json格式
+                
+                console.log(response)
+                const textResponse = typeof response.textResponse === 'string' ? response.textResponse : '';
+                console.log(textResponse);
+                this.messages.push({
+                    text: textResponse,
+                    isBot: true,
+                    avatar: 'http://localhost:8090/images/avatar/default_anything.png',
+                });
+            };
+
+            this.socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            };
+
             // 初始化时创建一个默认会话记录
             const initialMessages = [
             { text: "你好！欢迎使用AI机器人！", isBot: true, avatar:this.botAvatar }
             ];
             this.messages = initialMessages;
-            this.chatHistory.push({ 
-            title: "初始会话",
-            messages: initialMessages,
-            lastMessage: initialMessages[0].text,
-            lastTime: new Date().toLocaleString(),
-            avatar: this.botAvatar
-        
-            });
+            
         },
 
         computed: {
@@ -314,150 +308,206 @@
             }
             return array
         },
+        ...mapState([
+            'userInfo',
+        ])
         },
         methods:{
+                //20240924
+                sanitizedBotMessage(text) {
+                    return DOMPurify.sanitize(renderMarkdown(text));
+                },
                 //20240920
-                async sendMessage() {
+                sendMessage() {
                     if (!this.userInput.trim()) return;
 
                     // 添加用户消息
                     this.messages.push({ 
                         text: this.userInput, 
                         isBot: false,
-                        avatar: 'http://localhost:8090/avatar/adm%2A%2A%2A%40dootask.com.png'
+                        avatar: this.userInfo.userimg,
                     });
-
-                    this.isLoading = true;
-
-                    try {
-                        const response = await axios.post('http://103.63.139.165:3001/api/v1/workspace/dootask/stream-chat', 
-                        { message: this.userInput }, 
-                        { 
-                        headers: { 
-                            'Authorization': 'Bearer DSXGZFH-PAHMFHT-MH3S15H-QQR6BFG',
-                            'Content-Type': 'application/json',
-                        }
+                    console.log(this.userInfo.userid);
+                    // 滚动到最新消息
+                    this.$nextTick(() => {
+                            const chatBox = this.$refs.chatBox;
+                            chatBox.scrollTop = chatBox.scrollHeight;
                         });
 
-                        const concatenatedResponse = this.processResponse(response.data);
-                        this.messages.push({
-                        text: concatenatedResponse,
-                        isBot: true,
-                        avatar: 'this.botAvatar',
-                        });
 
-                        // 更新会话历史记录
-                        this.updateChatHistory(concatenatedResponse);
+                    //chat响应
+                     // Construct the request body
+                        const requestBody = {
+                            action: "chat",
+                            data: {
+                                message: this.userInput,
+                                mode: "chat",
+                                slug: this.slug,
+                            },
+                        };
 
-                    } catch (error) {
-                        console.error("Error sending message:", error);
-                        this.messages.push({
-                        text: "Sorry, something went wrong.",
-                        isBot: true,
-                        avatar: 'this.botAvatar',
-                        });
-                    } finally {
-                        this.isLoading = false;
+                        // Send message via WebSocket
+                        this.socket.send(JSON.stringify(requestBody));
+
+                        // Clear user input
                         this.userInput = "";
-                    }
-                    },
-                    processResponse(responseData) {
-                    const dataStrings = responseData.split('data: ').filter(str => str.trim() !== '');
-                    const textResponses = dataStrings.map(dataString => {
-                        try {
-                        const parsedData = JSON.parse(dataString.trim());
-                        return parsedData.textResponse ? parsedData.textResponse.trim() : null;
-                        } catch (e) {
-                        console.error('解析 data 数据失败:', e);
-                        return null;
-                        }
-                    });
-                    return textResponses.filter(Boolean).join('').trim();
-                    },
                     
+                },
+
+
+                    
+                    //打开新建模型的选择modal
                     openModelSelection() {
-                    this.newchat = true; // 打开模型选择对话框
+                        this.newchat = true; // 打开模型选择对话框
                     },
+
+                    //在modal中选择模型后，关闭新建模型的选择modal
                     startNewChat() {
-                    if (!this.newselect) return; // 确保选中了模型
+                            const previousSessionId = this.session_id; // 使用 this.sessionId
 
-                    // 保存当前会话记录
-                    if (this.messages.length > 0) {
-                        this.chatHistory.push({ 
-                        title: `会话 ${this.chatHistory.length + 1}`,
-                        messages: [...this.messages],
-                        lastMessage: this.messages[this.messages.length - 1].text,
-                        lastTime: new Date().toLocaleString(),
-                        avatar: this.botAvatar
-                        });
-                    }
+                            if (this.newselect) {
+                                this.session_id++; // 确保选中了模型时自动加一
+                            }
 
-                    // 清空当前消息
-                    this.messages = [];
-                    this.userInput = "";
+                            // 保存当前会话记录
+                            if (this.messages.length > 0) {
+                                this.chatHistory.push({ 
+                                    title: `会话 ${this.chatHistory.length + 1}`,
+                                    messages: [...this.messages],
+                                    last_message: this.messages[this.messages.length - 1].text,
+                                    lastTime: new Date().toLocaleString(),
+                                    avatar: this.botAvatar,
+                                    session_id: previousSessionId, // 使用更新前的 sessionId
+                                });
 
-                    
-                    // 重新添加初始会话记录
-                    const initialMessages = [
-                        { text: `你好！我是 ${this.newselect} ，欢迎使用！`, isBot: true, avatar: this.botAvatar }
-                    ];
-                    this.messages = initialMessages;
-                    
-                    // 关闭对话框
-                    this.newchat = false;
+                                // Construct the request body
+                                const backRequest = {
+                                    action: "back",
+                                    data: {
+                                        last_message: this.messages[this.messages.length - 1].text,
+                                        slug: 'this.userInfo.userid',
+                                        session_id: previousSessionId, // 使用更新前的 sessionId
+                                    },
+                                };
+
+                                console.log(backRequest.data);
+                                this.socket.send(JSON.stringify(backRequest));
+                            }
+                        
+
+                        // 清空当前消息
+                        this.messages = [];
+                        this.userInput = "";
+
+                        // by hss202409222
+                        // 根据选择的模型设置机器人头像
+                        const selectedBot = this.aichatList.find(item => item.value === this.newselect);
+                        this.botAvatar = selectedBot ? selectedBot.avatar : this.botAvatar; // 赋值相应的头像
+
+                        //0922
+                        // 重新添加初始会话记录
+                        const initialMessages = [
+                            { text: `你好！我是 ${this.newselect} ，欢迎使用！`, isBot: true, avatar: this.botAvatar }
+                        ];
+                        this.messages = initialMessages;
+                        
+                        // 关闭对话框
+                        this.newchat = false;
                     },
-                    //新选择----------------------------------------------------------
+
+                    //下拉框的模型选择
                     onOptionChange() {
+
+                    this.lastSelect = this.newselect; // 保存上一次选择的模型
                     if (!this.newselect) return; // 确保选中了模型
 
-                    // 保存当前会话记录
-                    if (this.messages.length > 0) {
-                        this.chatHistory.push({ 
-                        title: `会话 ${this.chatHistory.length + 1}`,
-                        messages: [...this.messages],
-                        lastMessage: this.messages[this.messages.length - 1].text,
-                        lastTime: new Date().toLocaleString(),
-                        avatar: this.botAvatar
-                        });
-                    }
+                        // 保存当前会话记录
+                        if (this.messages.length > 0) {
+                            this.chatHistory.push({ 
+                            title: `会话 ${this.chatHistory.length + 1}`,
+                            messages: [...this.messages],
+                            last_message: this.messages[this.messages.length - 1].text,
+                            lastTime: new Date().toLocaleString(),
+                            avatar: this.botAvatar,
+                            session_id: this.session_id, // 使用更新前的 sessionId
+                            });
+                        }
 
-                    // 清空当前消息
-                    this.messages = [];
-                    this.userInput = "";
 
-                    // 重新添加初始会话记录
-                    const initialMessages = [
-                        { text: `你好！我是 ${this.newselect} ，欢迎使用！`, isBot: true, avatar: this.botAvatar }
-                    ];
-                    this.messages = initialMessages;
-                    
-                    // 关闭对话框
-                    this.newchat = false;
+
+                        // 清空当前消息
+                        this.messages = [];
+                        this.userInput = "";
+
+                        // by hss202409222
+                        // 根据选择的模型设置机器人头像
+                        const selectedBot = this.aichatList.find(item => item.value === this.newselect);
+                        this.botAvatar = selectedBot ? selectedBot.avatar : this.botAvatar; // 赋值相应的头像
+                        
+                        //0922
+                        // 重新添加初始会话记录
+                        const initialMessages = [
+                            { text: `你好！我是 ${this.newselect} ，欢迎使用！`, isBot: true, avatar: this.botAvatar }
+                        ];
+                        this.messages = initialMessages;
+                        
+                        // 关闭对话框
+                        this.newchat = false;
                     },
                     // -------------------------------------------------------------------------
                     updateChatHistory(lastResponse) {
-                    // 更新最近一条消息及时间
-                    if (this.chatHistory.length > 0) {
-                        const currentSession = this.chatHistory[this.chatHistory.length - 1];
-                        currentSession.lastMessage = lastResponse;
-                        currentSession.lastTime = new Date().toLocaleString();
-                    }
+                        // 更新最近一条消息及时间
+                        if (this.chatHistory.length > 0) {
+                            const currentSession = this.chatHistory[this.chatHistory.length - 1];
+                            currentSession.last_message = lastResponse;
+                            currentSession.lastTime = new Date().toLocaleString();
+                            currentSession.avatar = this.botAvatar; // 更新会话历史中的头像
+                        
+                        }
+                        
+
                     },
 
                     loadChatSession(session) {
-                    this.messages = session.messages; // 加载选定的历史会话
-                    this.userInput = ""; // 清空输入框
-                    this.drawerVisible = false; // 关闭抽屉
+                        console.log(session); // 打印选定的历史会话
+                        this.messages = session.messages; // 加载选定的历史会话
+                        this.userInput = ""; // 清空输入框
+                        this.botAvatar = session.avatar; // 关联对应的头像
+                        this.drawerVisible = false; // 关闭抽屉
+                        
+
+
+                        // 确保在加载会话时使用最新的 last_message
+                        const lastMessage = session.messages.length > 0 ? session.messages[session.messages.length - 1].text : '';
+
+                        // 将加载的会话的最后一条消息发送回 WebSocket
+                        const backRequest = {
+                            action: "back",
+                            data: {
+                                last_message: lastMessage,
+                                slug: 'this.sessionInfo.userid',
+                                session_id: session.session_id, // 使用历史记录中的 session ID
+                            },
+                        };
+
+
+                        this.socket.send(JSON.stringify(backRequest)); // 发送到 WebSocket
+                        this.drawerVisible = false; // 关闭抽屉
+
+
+                        
                     },
                     toggleDrawer() {
-                    this.drawerVisible = !this.drawerVisible; // 切换抽屉的可见性
+                        this.drawerVisible = true; // 切换抽屉的可见性
                     },
 
-
-
             //setting弹窗
-            aisetForm(item){
-                this.goForward({name: 'manage-aisetting'});
+            aisetForm(){
+                this.goForward({
+                    name: 'manage-aisetting',
+                    params: { newselect: this.newselect } // 传递选择的模型
+                    
+                });
             },
             //底部输入工具栏
             onToolbar(action) {
@@ -488,8 +538,6 @@
                 case 'anon':
                     this.$emit('on-more', action)
                     break;
-
-
             }
         },
         onSend(type = 'auto') {
@@ -517,57 +565,6 @@
                 }
             }, this.changeLoad > 0 ? 100 : 0)
         },
-        // 表情
-        showMore(val) {
-            if (val) {
-                this.showMenu = false;
-                // this.showMore = false;
-                this.showEmoji = false;
-                this.emojiQuickShow = false;
-            }
-        },
-
-        showEmoji(val) {
-            if (this.emojiBottom) {
-                if (val) {
-                    this.quill.enable(false)
-                } else if (!this.disabled) {
-                    this.quill.enable(true)
-                }
-            }
-            if (val) {
-                let text = this.value
-                    .replace(/&nbsp;/g," ")
-                    .replace(/<[^>]+>/g, "")
-                if (text
-                    && text.indexOf(" ") === -1
-                    && text.length >= 1
-                    && text.length <= 8) {
-                    this.emojiQuickKey = text;
-                } else {
-                    this.emojiQuickKey = "";
-                }
-                //
-                this.showMenu = false;
-                this.showMore = false;
-                // this.showEmoji = false;
-                this.emojiQuickShow = false;
-                if (this.quill) {
-                    const range = this.quill.selection.savedRange;
-                    this.rangeIndex = range ? range.index : 0
-                }
-            } else if (this.rangeIndex > 0) {
-                this.quill.setSelection(this.rangeIndex)
-            }
-        },
-        emojiQuickShow(val) {
-            if (val) {
-                this.showMenu = false;
-                this.showMore = false;
-                this.showEmoji = false;
-                // this.emojiQuickShow = false;
-            }
-        },
         hidePopover(action) {
             this.showMenu = false;
             this.showMore = false;
@@ -576,26 +573,6 @@
             }
             this.showEmoji = false;
             this.emojiQuickShow = false;
-        },
-        onSelectEmoji(item) {
-            if (!this.quill) {
-                return;
-            }
-            if (item.type === 'emoji') {
-                this.quill.insertText(this.rangeIndex, item.text);
-                this.rangeIndex += item.text.length
-                if (this.windowLandscape) {
-                    this.showEmoji = false;
-                }
-            } else if (item.type === 'emoticon') {
-                this.$emit('on-send', `<img class="emoticon" data-asset="${item.asset}" data-name="${item.name}" src="${item.src}"/>`)
-                if (item.asset === "emosearch") {
-                    this.$emit('input', "")
-                }
-                if (this.windowLandscape) {
-                    this.showEmoji = false;
-                }
-            }
         },
         sendClass() {
             if (this.filterInvalidLine(this.value)) {
@@ -643,118 +620,3 @@
         }
     }
 </script>
-
-
-<style scoped>
-
-.chatBox {
-  width: 100%;
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  height: calc(80vh - 10px); /* 设置合适的高度 */
-  position: relative; /* 添加相对定位 */
-}
-
-.message-content {
-  display: flex;
-  align-items: flex-end; /* 垂直对齐 */
-  margin-bottom: 15px; /* 间距 */
-}
-.avatar {
-  width: 40px; /* 头像宽度 */
-  height: 40px; /* 头像高度 */
-  border-radius: 50%; /* 圆形头像 */
-  margin-right: 10px; /* 头像和消息内容之间的间距 */
-  margin-left: 10px; /* 头像和消息内容之间的间距 */
-}
-.bot-message {
-  justify-content: flex-start; /* 头像和消息在左侧 */
-}
-
-.user-message {
-  justify-content: flex-end; /* 头像和消息在右侧 */
-}
-
-.bot-avatar {
-  order: 0; /* 头像在消息内容之前 */
-}
-
-.user-avatar {
-  order: 2; /* 头像在消息内容之后 */
-}
-
-
-.text-content {
-  max-width: 70%; /* 最大宽度 */
-  padding: 10px;
-  border-radius: 15px;
-  word-wrap: break-word; /* 自动换行 */
-  text-align: left; /* 机器人消息左对齐 */
-}
-
-.bot-message .text-content {
-  background-color:#f4f5f7; /* 机器人消息背景色 */
-  color:#303133
-}
-
-.user-message .text-content {
-  background-color: #84c66a; /* 用户消息背景色 */
-  color: #fff; /* 用户消息文字颜色 */
-}
-
-/* .chat-input-container{
-    position: absolute;
-} */
-
-
-.chat-input-container li{
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-    display: flex;
-}
-.chat-input-container .taskfont{
-    font-size: 22px;
-    line-height: 30px;
-    display: inline-block;
-}
-
-
-.input-container {
-  display: flex;
-  align-items: center;
-  padding: 5px 18px 22px 0 ;
-  border-radius: 10px;
-  background-color: #f4f5f7;
-  width: 100%;
-}
-
-.user-input {
-  flex: 1;
-  margin-right: 10px;      /* 输入框与按钮之间的间距 */
-        .el-input__inner {
-            background-color: #f4f5f7;
-            border: none;
-        }
-}
-
-
-
-.send-button {
-  padding: 1px 6px;
-  margin-left: 15px;
-  border: none;
-  background-color: #84c66a;
-  color: #fff;
-  cursor: pointer;
-  font-size: 22px;
-  border-radius: 50%;
-}
-
-.send-button:hover {
-  background-color: #d8e3ef;
-}
-</style>

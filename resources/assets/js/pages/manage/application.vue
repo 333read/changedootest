@@ -59,9 +59,9 @@
                     <ul class="ivu-modal-wrap-ul" v-if="aibotType == 1">
                         <!--  by hss 20240912 -->
                         <li v-for="(item, key) in aibotList"  :key="key">
-                            <div style="display: flex; align-items: center; ">
+                            <div class="apply-licontent">
                                 <img class="apply-icon" :src="item.src">
-                                <div style="display: block; width: calc(100% - 150px);">
+                                <div class="apply-text">
                                     <h4>{{ item.label }}</h4>
                                     <p class="desc" @click="openDetail(item.desc)">{{ item.desc }}</p>
                                 </div>
@@ -82,9 +82,9 @@
                     
                         <!-- //20240823------------------------------- -->
                         <li v-for="(item, key) in aibotList0"  :key="key">
-                            <div style="display: flex; align-items: center; ">
+                            <div class="apply-licontent">
                                 <img class="apply-icon" :src="item.src">
-                                <div style="display: block; width: calc(100% - 150px);">
+                                <div class="apply-text" >
                                     <h4>{{ item.label }}</h4>
                                     <p  class="desc" @click="openDetail(item.desc)">{{ item.desc }}</p>
                                 </div>
@@ -151,16 +151,16 @@
             :visible.sync="aiformVisible"
                 @close="closeDialog" 
                 >
-                    <div style="height:430px;"> 
+                    <div class="aiform-content"> 
                     <!--需要弹出的内容部分-->
-                        <div style="display: flex;margin-top: -50px;">
+                        <div class="aiform-title">
                             <i class="el-icon-set-up"></i>
                             <div class="htext" >{{ itemLabel }}</div>
                         </div>
-                        <el-form :modal="headerForm" style="">
+                        <el-form :modal="headerForm">
                             <el-form-item label="API Key" prop="name" class="username" >
                                 <el-input v-model="password" :type="pwdObj.pwdType" ></el-input>
-                                <div style="display: flex">访问openAI网站查看：
+                                <div  class="item-desc">访问openAI网站查看：
                                     <div v-if="itemLabel == 'ChatGPT'">
                                         <a href="https://platform.openai.com/account/api-keys" target="_blank">
                                             https://platform.openai.com/account/api-keys
@@ -289,13 +289,13 @@
                         </el-form>
 
 
-                        <div style="margin-top: 20px;text-align: right">
-                            <el-button size="mini" @click="aiformVisible = false" style="width: 94px;">
-                                <i class="el-icon-circle-close" style=" color: #151515;font-size: 16px;"></i>
-                            取消</el-button>
-                            <el-button size="mini" :opntions='options' @click="onGoToChat('custom')" style="width: 94px;background-color: #8bcf70; color: white">
-                                <i class="el-icon-receiving" style="color: #FFFFFF;font-size: 16px;"></i>
-                            保存</el-button>
+                        <div class="aiform-footer">
+                            <Button type="default" @click="aiformVisible = false">
+                                <i class="el-icon-circle-close"></i>
+                            取消</Button>
+                            <Button type="primary"  :opntions='options' @click="onGoToChat('custom')" class="ivu-btn-primary" >
+                                <i class="el-icon-receiving"></i>
+                            保存</Button>
                         </div>
                 </div>
         </el-dialog> 
@@ -424,6 +424,7 @@ import SystemThirdAccess from "./setting/components/SystemThirdAccess";
 import SystemEmailSetting from "./setting/components/SystemEmailSetting";
 import SystemAppPush from "./setting/components/SystemAppPush";
 import { Store } from "le5le-store";
+import { Button } from "view-design-hi";
 
 
 export default {
