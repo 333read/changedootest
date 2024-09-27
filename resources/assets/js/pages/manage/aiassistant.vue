@@ -244,15 +244,16 @@
             this.socket.onmessage = (event) => {
                 const response = JSON.parse(event.data); //将回答内容转换为json格式
                 
-                console.log(response)
-                const textResponse = typeof response.textResponse === 'string' ? response.textResponse : '';
-                console.log(textResponse);
-                this.messages.push({
-                    text: textResponse,
-                    isBot: true,
-                    avatar: 'http://localhost:8090/images/avatar/default_anything.png',
-                });
-            };
+                    console.log(response)
+                    const textResponse = typeof response.textResponse === 'string' ? response.textResponse : '';
+                    console.log(textResponse);
+                    this.messages.push({
+                        text: textResponse,
+                        isBot: true,
+                        avatar: 'http://localhost:8090/images/avatar/default_anything.png',
+                    });
+                    
+                };
 
             this.socket.onerror = (error) => {
             console.error("WebSocket error:", error);
@@ -343,6 +344,7 @@
                                 message: this.userInput,
                                 mode: "chat",
                                 slug: this.slug,
+                                user_id: this.userInfo.userid,
                             },
                         };
 
@@ -369,31 +371,30 @@
                                 this.session_id++; // 确保选中了模型时自动加一
                             }
 
-                            // 保存当前会话记录
-                            if (this.messages.length > 0) {
-                                this.chatHistory.push({ 
-                                    title: `会话 ${this.chatHistory.length + 1}`,
-                                    messages: [...this.messages],
-                                    last_message: this.messages[this.messages.length - 1].text,
-                                    lastTime: new Date().toLocaleString(),
-                                    avatar: this.botAvatar,
-                                    session_id: previousSessionId, // 使用更新前的 sessionId
-                                });
+                            this.socket.send(JSON.stringify({
+                            action: "insert-message",
+                            data: {
+                                user_id: this.userInfo.userid,
+                                session_id: this.session_id,
+                                model: this.newselect,
+                                avatar: this.botAvatar,
+                                last_message: this.messages[this.messages.length - 1].text,
+                                lastTime: new Date().toLocaleString(),
+                            },
+                        }));
+                        this.newchat = false; // 关闭模型选择对话框
 
-                                // Construct the request body
-                                const backRequest = {
-                                    action: "back",
-                                    data: {
-                                        last_message: this.messages[this.messages.length - 1].text,
-                                        slug: 'this.userInfo.userid',
-                                        session_id: previousSessionId, // 使用更新前的 sessionId
-                                    },
-                                };
-
-                                console.log(backRequest.data);
-                                this.socket.send(JSON.stringify(backRequest));
-                            }
-                        
+                        //   // Fetch history from the server
+                            this.socket.send(JSON.stringify({
+                                action: "get-history",
+                                data: {
+                                    user_id: this.userInfo.userid,
+                                    model: this.newselect,
+                                    session_id: session_id,
+                                    last_message:last_message,
+                                    lastTime:update_time
+                                }
+                            }));
 
                         // 清空当前消息
                         this.messages = [];
@@ -421,18 +422,27 @@
                     this.lastSelect = this.newselect; // 保存上一次选择的模型
                     if (!this.newselect) return; // 确保选中了模型
 
-                        // 保存当前会话记录
-                        if (this.messages.length > 0) {
-                            this.chatHistory.push({ 
-                            title: `会话 ${this.chatHistory.length + 1}`,
-                            messages: [...this.messages],
+                    this.socket.send(JSON.stringify({
+                        action: "insert-message",
+                        data: {
+                            user_id: this.userInfo.userid,
+                            session_id: this.session_id,
+                            model: this.newselect,
+                            avatar: this.botAvatar,
                             last_message: this.messages[this.messages.length - 1].text,
                             lastTime: new Date().toLocaleString(),
-                            avatar: this.botAvatar,
-                            session_id: this.session_id, // 使用更新前的 sessionId
-                            });
-                        }
+                        },
+                    }));
 
+                    // 获取历史内容
+                    this.socket.send(JSON.stringify({ 
+                        action: "get-history",
+                        data: {
+                            model: this.newselect,
+                            last_message: this.messages[this.messages.length - 1].text,
+                            lastTime: new Date().toLocaleString(),
+                        }
+                    }));
 
 
                         // 清空当前消息
@@ -454,49 +464,7 @@
                         // 关闭对话框
                         this.newchat = false;
                     },
-                    // -------------------------------------------------------------------------
-                    updateChatHistory(lastResponse) {
-                        // 更新最近一条消息及时间
-                        if (this.chatHistory.length > 0) {
-                            const currentSession = this.chatHistory[this.chatHistory.length - 1];
-                            currentSession.last_message = lastResponse;
-                            currentSession.lastTime = new Date().toLocaleString();
-                            currentSession.avatar = this.botAvatar; // 更新会话历史中的头像
-                        
-                        }
-                        
-
-                    },
-
-                    loadChatSession(session) {
-                        console.log(session); // 打印选定的历史会话
-                        this.messages = session.messages; // 加载选定的历史会话
-                        this.userInput = ""; // 清空输入框
-                        this.botAvatar = session.avatar; // 关联对应的头像
-                        this.drawerVisible = false; // 关闭抽屉
-                        
-
-
-                        // 确保在加载会话时使用最新的 last_message
-                        const lastMessage = session.messages.length > 0 ? session.messages[session.messages.length - 1].text : '';
-
-                        // 将加载的会话的最后一条消息发送回 WebSocket
-                        const backRequest = {
-                            action: "back",
-                            data: {
-                                last_message: lastMessage,
-                                slug: 'this.sessionInfo.userid',
-                                session_id: session.session_id, // 使用历史记录中的 session ID
-                            },
-                        };
-
-
-                        this.socket.send(JSON.stringify(backRequest)); // 发送到 WebSocket
-                        this.drawerVisible = false; // 关闭抽屉
-
-
-                        
-                    },
+                    
                     toggleDrawer() {
                         this.drawerVisible = true; // 切换抽屉的可见性
                     },

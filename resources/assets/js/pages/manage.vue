@@ -303,6 +303,18 @@
             <TeamManagement v-if="allUserShow"/>
         </DrawerOverlay>
 
+       
+        <!--查看所有授权-->
+        <DrawerOverlay
+            v-model="authUserShow"
+            placement="right"
+            :size="1380">
+            <AuthUsermanage v-if="authUserShow"/>
+        </DrawerOverlay>
+
+
+
+
         <!--查看所有项目-->
         <DrawerOverlay
             v-model="allProjectShow"
@@ -368,6 +380,8 @@ import {MarkdownPreview} from "../store/markdown";
 import UserSelect from "../components/UserSelect.vue";
 import ImgUpload from "../components/ImgUpload.vue";
 
+import AuthUsermanage from './manage/components/AuthUsermanage';
+
 export default {
     components: {
         ImgUpload, UserSelect,
@@ -387,7 +401,10 @@ export default {
         TeamManagement,
         ProjectArchived,
         MicroApps,
-        ComplaintManagement
+        ComplaintManagement,
+
+        AuthUsermanage
+
     },
     directives: {longpress},
     data() {
@@ -434,6 +451,10 @@ export default {
 
             workReportShow: false,
             allUserShow: false,
+
+            authUserShow: false,
+
+
             allProjectShow: false,
             archivedProjectShow: false,
 
@@ -774,6 +795,9 @@ export default {
 
         settingRoute(path) {
             switch (path) {
+                case 'authUser':
+                    this.authUserShow = true;
+                    return;
                 case 'allUser':
                     this.allUserShow = true;
                     return;
@@ -1188,6 +1212,9 @@ export default {
                     this.onAddShow()
                     break;
                 case 'allUser':
+                
+                case 'authUser':
+
                 case 'complaint':
                 case 'workReport':
                     this.settingRoute(act)

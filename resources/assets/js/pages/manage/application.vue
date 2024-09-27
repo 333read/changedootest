@@ -621,6 +621,7 @@ export default {
                     { value: "appPush", label: "APP 推送", sort: 18 },
                     { value: "complaint", label: "举报管理", sort: 19 },
                     { value: "allUser", label: "团队管理", sort: 20 },
+                    { value: "authUser", label: "授权管理", sort: 21 },
                 ])
             }
             adminApplyList = adminApplyList.map((h) => {
