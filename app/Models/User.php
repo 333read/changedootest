@@ -210,6 +210,15 @@ class User extends AbstractModel
         return in_array('temp', $this->identity);
     }
 
+     /**
+     * 返回是否临时帐号
+     * @return bool
+     */
+    public function isAuth()
+    {
+        return in_array('authus', $this->identity);
+    }
+
     /**
      * 返回是否禁用帐号（离职）
      * @return bool

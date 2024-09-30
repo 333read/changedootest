@@ -1,3 +1,5 @@
+<!-- dootask的chat接口中post请求记录（直接能够复制粘贴使用） -->
+
 <template>
     <div class="page-aiassistant">
         <PageTitle :title="$L('AI助手')"/>
@@ -62,8 +64,8 @@
                                                 <div class="ivu-modal-wrap-aiass-body">
                                                     <div class="history-list">
                                                             <div
-                                                                v-for="(session, index) in chatHistory"
-                                                                :key="index"
+                                                                v-for="(session) in chatHistory"
+                                                                :key="session.id"
                                                                 class="history-item"
                                                                 @click="loadChatSession(session)"
                                                                 >
@@ -156,6 +158,7 @@
     import renderMarkdown from "./aisetting/utils/markdown";
     import { mapState } from 'vuex';
     import DrawerOverlay from '../../components/DrawerOverlay'
+    import axios from "axios";
     export default {
         components:{
             DrawerOverlay,
@@ -181,10 +184,6 @@
         },
         data(){
             return {
-                userInput: "",// 20240926
-                socket: null, // WebSocket instance
-                slug: "workspace-for-user-1", // Example slug
-                session_id: 0, // Example session ID
                 users:[], // by hss20240903
                 messages: [], // by hss20240911
                 userInput: "",  // by hss20240911
@@ -223,6 +222,9 @@
                 pwdObj: { pwdType: 'password'},
                 valuemol: '',
 
+                userInput: "",// 20240926
+                slug: "workspace-for-user-1", // Example slug for the workspace
+                sessionId: null, // 存储会话 ID
             }
         },
 
@@ -239,29 +241,12 @@
 
         mounted() {
 
-            this.socket = new WebSocket('ws://localhost:3333/ws');
-            this.socket.onmessage = (event) => {
-                const response = JSON.parse(event.data);
-                
-                    const textResponse = typeof response.textResponse === 'string' ? response.textResponse : '';
-                    this.messages.push({
-                        text: textResponse,
-                        isBot: true,
-                        avatar: 'http://localhost:8090/images/avatar/default_anything.png',
-                    });
-                
-            };
-
-            this.socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-            };
-
-             // 初始化时创建一个默认会话记录
+            // 初始化时创建一个默认会话记录
             const initialMessages = [
-                    { text: "你好！欢迎使用AI机器人！", isBot: true, avatar:this.botAvatar }
+            { text: "你好！欢迎使用AI机器人！", isBot: true, avatar:this.botAvatar }
             ];
             this.messages = initialMessages;
-
+            
         },
 
         computed: {
@@ -276,6 +261,36 @@
             }
             return '发送文件'
         },
+            msgTags({dialogData}) {
+            const array = [
+                {type: '', label: '消息'},
+            ];
+            if (dialogData.has_tag) {
+                array.push({type: 'tag', label: '标注'})
+            }
+            if (dialogData.has_todo) {
+                array.push({type: 'todo', label: '事项'})
+            }
+            if (dialogData.has_image) {
+                array.push({type: 'image', label: '图片'})
+            }
+            if (dialogData.has_file) {
+                array.push({type: 'file', label: '文件'})
+            }
+            if (dialogData.has_link) {
+                array.push({type: 'link', label: '链接'})
+            }
+            if (dialogData.group_type === 'project') {
+                array.push({type: 'project', label: '打开项目'})
+            }
+            if (dialogData.group_type === 'task') {
+                array.push({type: 'task', label: '打开任务'})
+            }
+            if (dialogData.group_type === 'okr') {
+                array.push({type: 'okr', label: '打开OKR'})
+            }
+            return array
+        },
         ...mapState([
             'userInfo',
         ])
@@ -285,63 +300,96 @@
                 sanitizedBotMessage(text) {
                     return DOMPurify.sanitize(renderMarkdown(text));
                 },
-                
+                generateSessionId() {
+                    return 'session_' + '_' + Math.random().toString(36);
+                },
                 //20240920
-                sendMessage() {
+                async sendMessage() {
                     if (!this.userInput.trim()) return;
-
                     // 添加用户消息
                     this.messages.push({ 
                         text: this.userInput, 
                         isBot: false,
                         avatar: this.userInfo.userimg,
+                        session_id : this.sessionId, // 保存sessionId
+                        
+                        
                     });
-                    console.log(this.userInfo.userid);
                     // 滚动到最新消息
                     this.$nextTick(() => {
                             const chatBox = this.$refs.chatBox;
                             chatBox.scrollTop = chatBox.scrollHeight;
                         });
+                    this.isLoading = true;
 
                     //chat响应
-                     // Construct the request body
-                        const requestBody = {
-                            action: "chat",
-                            data: {
-                                message: this.userInput,
-                                mode: "chat",
-                                slug: this.slug,
-                                user_id: this.userInfo.userid,
-                            },
-                        };
-                        // Send message via WebSocket
-                        this.socket.send(JSON.stringify(requestBody));
-                        // Clear user input
+                    try {
+                        const response = await axios.post('http://103.63.139.165:3001/api/v1/workspace/dootask/chat', 
+                        { 
+                            message: this.userInput,
+                            mode: "chat"  // 添加聊天模式 查询query 聊天chat
+                        }, 
+                        { 
+                        headers: { 
+                            'Authorization': 'Bearer DSXGZFH-PAHMFHT-MH3S15H-QQR6BFG',
+                            'Content-Type': 'application/json',
+                        }
+                        });
+
+                        // 机器人输出的消息
+                        const concatenatedResponse = response.data.textResponse;
+                        // 
+                        //添加授权的标识信息，if(允许授权){授权信息} else if（不允许授权）{提示：无聊天权限}
+
+                        this.messages.push({
+                            text: concatenatedResponse,
+                            isBot: true,
+                            avatar: 'this.botAvatar',
+                            session_id : this.sessionId, // 保存sessionId
+                            user_id: this.userInfo.userid,
+                        });
+                        // 每句话
+                        console.log(this.messages);
+
+                        
+                        } catch (error) {
+                        console.error("Error sending message:", error);
+                        this.messages.push({
+                            text: "Sorry, something went wrong.",
+                            isBot: true,
+                            avatar: this.botAvatar,
+                        });
+                    } finally {
+                        this.isLoading = false;
                         this.userInput = "";
-                    
+                        this.$nextTick(() => {
+                            const chatBox = this.$refs.chatBox;
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        });
+                    }
                 },
 
-
-                    
-                openModelSelection() {
+                    openModelSelection() {
                         this.newchat = true; // 打开模型选择对话框
                     },
                     startNewChat() {
                         this.lastSelect = this.newselect;// 保存上一次选择的模型
+                        this.sessionId = this.generateSessionId(); // 生成新的会话 ID
                         if (!this.newselect) return; // 确保选中了模型
-
                         // 保存当前会话记录
                         if (this.messages.length > 0) {
                             this.chatHistory.push({ 
-                            title: `会话 ${this.chatHistory.length + 1}`,
-                            messages: [...this.messages],
-                            lastMessage: this.messages[this.messages.length - 1].text,
-                            lastTime: new Date().toLocaleString(),
-                            avatar: this.botAvatar,
-                            newselect:this.lastSelect,
+                                title: `会话 ${this.chatHistory.length + 1}`,
+                                messages: [...this.messages],
+                                lastMessage: this.messages[this.messages.length - 1].text,
+                                lastTime: new Date().toLocaleString(),
+                                avatar: this.botAvatar,
+                                newselect:this.lastSelect,
+                                session_id:this.sessionId, // 保存sessionId
                             });
+                            console.log('打印上个会话记录');
+                            console.log(this.chatHistory);
                         }
-
                         // 清空当前消息
                         this.messages = [];
                         this.userInput = "";
@@ -362,21 +410,21 @@
                         this.newchat = false;
                     },
 
+
                     //下拉框的模型选择
                     onOptionChange() {
-
-                    this.lastSelect = this.newselect; // 保存上一次选择的模型
-                    if (!this.newselect) return; // 确保选中了模型
-
+                        this.lastSelect = this.newselect; // 保存上一次选择的模型
+                        // 更新会话历史记录
+                        if (!this.newselect) return; // 确保选中了模型
                         // 保存当前会话记录
                         if (this.messages.length > 0) {
-                            this.chatHistory.push({ 
-                            title: `会话 ${this.chatHistory.length + 1}`,
-                            messages: [...this.messages],
-                            lastMessage: this.messages[this.messages.length - 1].text,
-                            lastTime: new Date().toLocaleString(),
-                            avatar: this.botAvatar,
-                            newselect:this.lastSelect,
+                                this.chatHistory.push({ 
+                                title: `会话 ${this.chatHistory.length + 1}`,
+                                messages: [...this.messages],
+                                lastMessage: this.messages[this.messages.length - 1].text,
+                                lastTime: new Date().toLocaleString(),
+                                avatar: this.botAvatar,
+                                newselect:this.lastSelect,
                             });
                         }
 
@@ -399,52 +447,32 @@
                     // 关闭对话框
                     this.newchat = false;
                     },
-                    // -------------------------------------------------------------------------
+                    
+                    //更新当前历史
                     updateChatHistory(lastResponse) {
                         // 更新最近一条消息及时间
                         if (this.chatHistory.length > 0) {
-                            const currentSession = this.chatHistory[this.chatHistory.length - 1];
+                            const currentSession = this.chatHistory[this.sessionId];
                             currentSession.lastMessage = lastResponse;
                             currentSession.lastTime = new Date().toLocaleString();
                             currentSession.avatar = this.botAvatar; // 更新会话历史中的头像
                             currentSession.lastSelect = this.lastSelect; // 更新会话历史中的模型选择
                         }
-                        
-
                     },
 
+                    //切换历史会话
                     loadChatSession(session) {
                         console.log(session);
-                        // 更新当前会话的最后一条消息
-                        if (this.messages.length > 0) {
-                            const lastMessage = this.messages[this.messages.length - 1]?.text || '';
-                            const lastTime = new Date().toLocaleString();
-
-                            // 查找并更新相应的历史会话记录
-                            const historySession = this.chatHistory.find(item => item.title === session.title);
-                            if (historySession) {
-                                historySession.lastMessage = lastMessage;
-                                historySession.lastTime = lastTime;
-                                // 不要更新头像，保持历史记录中的头像
-                                historySession.lastSelect = this.lastSelect; // 更新模型选择
-                            }
-                        }
-
-                        // 加载选定的历史会话
                         this.messages = session.messages; // 加载选定的历史会话
                         this.userInput = ""; // 清空输入框
-                        
                         this.botAvatar = session.avatar; // 关联对应的头像
                         this.drawerVisible = false; // 关闭抽屉
-                        
-                        // 更新模型选择
                         this.lastSelect = session.lastSelect; // 重新设置模型选择
-                        this.newselect = this.lastSelect; // 确保 newselect 也更新
-
                     },
                     toggleDrawer() {
                         this.drawerVisible = true; // 切换抽屉的可见性
                     },
+
             //setting弹窗
             aisetForm(){
                 this.goForward({

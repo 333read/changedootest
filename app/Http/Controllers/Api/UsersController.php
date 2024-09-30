@@ -855,6 +855,21 @@ class UsersController extends AbstractController
                 $upArray['identity'] = array_diff($userInfo->identity, ['temp']);
                 break;
 
+                // 20240930
+                case 'setauthus':
+                    $msg = '设置成功';
+                    $upArray['identity'] = array_diff($userInfo->identity, ['authus']);
+                    $upArray['identity'][] = 'authus';
+                    break;
+    
+                case 'clearauthus':
+                    $msg = '取消成功';
+                    $upArray['identity'] = array_diff($userInfo->identity, ['authus']);
+                    break;
+                //
+
+
+
             case 'checkin_macs':
                 $list = is_array($data['checkin_macs']) ? $data['checkin_macs'] : [];
                 $array = [];

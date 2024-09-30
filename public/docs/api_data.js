@@ -10454,7 +10454,7 @@ define({ "api": [
             "type": "String",
             "optional": true,
             "field": "type",
-            "description": "<p>操作</p> <ul> <li>setadmin             设为管理员</li> <li>clearadmin           取消管理员</li> <li>settemp              设为临时帐号</li> <li>cleartemp            取消临时身份（取消临时帐号）</li> <li>checkin_macs         修改自动签到mac地址（需要参数 checkin_macs）</li> <li>department           修改部门（需要参数 department）</li> <li>setdisable           设为离职（需要参数 disable_time、transfer_userid）</li> <li>cleardisable         取消离职</li> <li>delete               删除会员（需要参数 delete_reason）</li> </ul>"
+            "description": "<p>操作</p> <ul> <li>setadmin             设为管理员</li> <li>clearadmin           取消管理员</li> <li>settemp              设为临时帐号</li> <li>cleartemp            取消临时身份（取消临时帐号）</li> <li>setauth             设为临时帐号</li> <li>clearauth            取消临时身份（取消临时帐号）</li> <li>checkin_macs         修改自动签到mac地址（需要参数 checkin_macs）</li> <li>department           修改部门（需要参数 department）</li> <li>setdisable           设为离职（需要参数 disable_time、transfer_userid）</li> <li>cleardisable         取消离职</li> <li>delete               删除会员（需要参数 delete_reason）</li> </ul>"
           },
           {
             "group": "Parameter",
