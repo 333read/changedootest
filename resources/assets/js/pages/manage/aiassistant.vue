@@ -1,5 +1,3 @@
-<!-- dootask的chat接口中post请求记录（直接能够复制粘贴使用） -->
-
 <template>
     <div class="page-aiassistant">
         <PageTitle :title="$L('AI助手')"/>
@@ -15,7 +13,7 @@
                                 </div>
 
                                 <div class="nav-select">
-                                    <el-select v-model="newselect" class="bot-select" @change="onOptionChange" >    
+                                    <el-select v-model="selectsetting" class="bot-select" @change="onOptionChange" >    
                                             <el-option label="ChatGPT" value="ChatGPT" ></el-option>
                                             <el-option label="Gemini" value="gemini"></el-option>
                                             <el-option label="Claude" value="claude"></el-option>
@@ -177,9 +175,9 @@
             type: Object,
             default: () => ({})
             },
-            newselect:{
+            selectsetting:{
                 type: String,
-                default:'Custom'
+                default:'Ollama'
             }
         },
         data(){
@@ -190,6 +188,7 @@
                 newchat: false,
                 modelDialogVisible: false, 
                 newselect:'',
+                selectsetting:'',
                 showMore: false,
                 chatHistory: [], // 存储历史会话记录
                 drawerVisible: false,
@@ -300,9 +299,7 @@
                 sanitizedBotMessage(text) {
                     return DOMPurify.sanitize(renderMarkdown(text));
                 },
-                generateSessionId() {
-                    return 'session_' + '_' + Math.random().toString(36);
-                },
+                //session_id是从后台获取不是前端生成
                 //20240920
                 async sendMessage() {
                     if (!this.userInput.trim()) return;
@@ -311,9 +308,7 @@
                         text: this.userInput, 
                         isBot: false,
                         avatar: this.userInfo.userimg,
-                        session_id : this.sessionId, // 保存sessionId
-                        
-                        
+                        user_id: this.userInfo.userid,
                     });
                     // 滚动到最新消息
                     this.$nextTick(() => {
@@ -324,6 +319,9 @@
 
                     //chat响应
                     try {
+
+
+
                         const response = await axios.post('http://103.63.139.165:3001/api/v1/workspace/dootask/chat', 
                         { 
                             message: this.userInput,
@@ -331,15 +329,13 @@
                         }, 
                         { 
                         headers: { 
-                            'Authorization': 'Bearer DSXGZFH-PAHMFHT-MH3S15H-QQR6BFG',
+                            'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
                             'Content-Type': 'application/json',
                         }
                         });
 
                         // 机器人输出的消息
                         const concatenatedResponse = response.data.textResponse;
-                        // 
-                        //添加授权的标识信息，if(允许授权){授权信息} else if（不允许授权）{提示：无聊天权限}
 
                         this.messages.push({
                             text: concatenatedResponse,
@@ -348,10 +344,11 @@
                             session_id : this.sessionId, // 保存sessionId
                             user_id: this.userInfo.userid,
                         });
-                        // 每句话
-                        console.log(this.messages);
-
+                        console.log(this.userInfo);
                         
+
+                        // 每句话
+
                         } catch (error) {
                         console.error("Error sending message:", error);
                         this.messages.push({
@@ -374,7 +371,6 @@
                     },
                     startNewChat() {
                         this.lastSelect = this.newselect;// 保存上一次选择的模型
-                        this.sessionId = this.generateSessionId(); // 生成新的会话 ID
                         if (!this.newselect) return; // 确保选中了模型
                         // 保存当前会话记录
                         if (this.messages.length > 0) {
@@ -385,7 +381,7 @@
                                 lastTime: new Date().toLocaleString(),
                                 avatar: this.botAvatar,
                                 newselect:this.lastSelect,
-                                session_id:this.sessionId, // 保存sessionId
+                                
                             });
                             console.log('打印上个会话记录');
                             console.log(this.chatHistory);
@@ -413,46 +409,21 @@
 
                     //下拉框的模型选择
                     onOptionChange() {
-                        this.lastSelect = this.newselect; // 保存上一次选择的模型
+                        // this.lastSelect = this.newselect; // 保存上一次选择的模型
                         // 更新会话历史记录
                         if (!this.newselect) return; // 确保选中了模型
                         // 保存当前会话记录
-                        if (this.messages.length > 0) {
-                                this.chatHistory.push({ 
-                                title: `会话 ${this.chatHistory.length + 1}`,
-                                messages: [...this.messages],
-                                lastMessage: this.messages[this.messages.length - 1].text,
-                                lastTime: new Date().toLocaleString(),
-                                avatar: this.botAvatar,
-                                newselect:this.lastSelect,
-                            });
-                        }
 
-                    // 清空当前消息
-                    this.messages = [];
-                    this.userInput = "";
-
-                    // by hss202409222
-                     // 根据选择的模型设置机器人头像
-                    const selectedBot = this.aichatList.find(item => item.value === this.newselect);
-                    this.botAvatar = selectedBot ? selectedBot.avatar : this.botAvatar; // 赋值相应的头像
-                    
-                    //0922
-                    // 重新添加初始会话记录
-                    const initialMessages = [
-                        { text: `你好！我是 ${this.newselect} ，欢迎使用！`, isBot: true, avatar: this.botAvatar }
-                    ];
-                    this.messages = initialMessages;
-                    
-                    // 关闭对话框
-                    this.newchat = false;
+                        // 关闭对话框
+                        this.newchat = false;
                     },
                     
+
                     //更新当前历史
                     updateChatHistory(lastResponse) {
                         // 更新最近一条消息及时间
                         if (this.chatHistory.length > 0) {
-                            const currentSession = this.chatHistory[this.sessionId];
+                            const currentSession = this.chatHistory[this.sessionId];    // 获取当前会话记录要使用sessionid
                             currentSession.lastMessage = lastResponse;
                             currentSession.lastTime = new Date().toLocaleString();
                             currentSession.avatar = this.botAvatar; // 更新会话历史中的头像

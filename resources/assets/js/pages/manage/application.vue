@@ -157,7 +157,7 @@
                             <i class="el-icon-set-up"></i>
                             <div class="htext" >{{ itemLabel }}</div>
                         </div>
-                        <el-form :modal="headerForm">
+                        <el-form>
                             <el-form-item label="API Key" prop="name" class="username" >
                                 <el-input v-model="password" :type="pwdObj.pwdType" ></el-input>
                                 <div  class="item-desc">访问openAI网站查看：
@@ -293,7 +293,7 @@
                             <Button type="default" @click="aiformVisible = false">
                                 <i class="el-icon-circle-close"></i>
                             取消</Button>
-                            <Button type="primary"  :opntions='options' @click="onGoToChat('custom')" class="ivu-btn-primary" >
+                            <Button type="primary"  @click="onGoToChat('custom')" class="ivu-btn-primary" >
                                 <i class="el-icon-receiving"></i>
                             保存</Button>
                         </div>

@@ -780,6 +780,54 @@ class UsersController extends AbstractController
         return Base::retSuccess('success', $list);
     }
 
+
+
+        /**
+     * @api {get} api/users/premission/lists          12. 会员权限列表（限管理员）
+     *
+     * @apiDescription 需要token身份
+     * @apiVersion 1.0.0
+     * @apiGroup users
+     * @apiName premission__lists
+     *
+     * @apiParam {Object} [keys]        搜索条件
+     * - keys.key               邮箱/电话/昵称/职位（赋值后keys.email、keys.tel、keys.nickname、keys.profession失效）
+     * @apiParam {Number} [page]                当前页，默认:1
+     * @apiParam {Number} [pagesize]            每页显示数量，默认:20，最大:50
+     *
+     * @apiSuccess {Number} ret     返回状态码（1正确、0错误）
+     * @apiSuccess {String} msg     返回信息（错误描述）
+     * @apiSuccess {Object} data    返回数据
+     */
+    public function premission__lists()
+    {
+        User::auth('admin');
+        //
+        $builder = User::select([
+            'users.*', 
+            'p.is_create'
+            ])->leftJoin('workspace_permissions as p', 'users.userid', '=', 'p.user_id');
+        //
+        $keys = Request::input('keys');
+        if ($keys['key']) {
+            $builder->where(function($query) use ($keys) {
+                $query->where("email", "like", "%{$keys['key']}%")
+                    ->orWhere("tel", "like", "%{$keys['key']}%")
+                    ->orWhere("nickname", "like", "%{$keys['key']}%")
+                    ->orWhere("profession", "like", "%{$keys['key']}%");
+            });
+        }
+        $list = $builder->orderBy('users.userid')->paginate(Base::getPaginate(50, 20));
+        //
+        return Base::retSuccess('success', $list);
+    }
+
+
+
+
+
+
+
     /**
      * @api {get} api/users/operation          13. 操作会员（限管理员）
      *
@@ -855,21 +903,18 @@ class UsersController extends AbstractController
                 $upArray['identity'] = array_diff($userInfo->identity, ['temp']);
                 break;
 
-                // 20240930
-                case 'setauthus':
-                    $msg = '设置成功';
-                    $upArray['identity'] = array_diff($userInfo->identity, ['authus']);
-                    $upArray['identity'][] = 'authus';
-                    break;
+            // 20240930 用户授权
+            case 'setauthus':
+                $msg = '设置成功';
+                $upArray['identity'] = array_diff($userInfo->identity, ['authus']);
+                $upArray['identity'][] = 'authus';
+                break;
     
-                case 'clearauthus':
-                    $msg = '取消成功';
-                    $upArray['identity'] = array_diff($userInfo->identity, ['authus']);
-                    break;
-                //
-
-
-
+            case 'clearauthus':
+                $msg = '取消成功';
+                $upArray['identity'] = array_diff($userInfo->identity, ['authus']);
+                break;
+            //-----------------
             case 'checkin_macs':
                 $list = is_array($data['checkin_macs']) ? $data['checkin_macs'] : [];
                 $array = [];

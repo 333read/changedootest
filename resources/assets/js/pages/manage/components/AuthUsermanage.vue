@@ -93,7 +93,7 @@
                                 <Button :loading="loadIng > 0" type="primary" icon="ios-search" @click="onSearch">{{$L('搜索')}}</Button>
                                 <div slot="content">
                                     <Button v-if="keyIs" type="text" @click="keyIs=false">{{$L('取消筛选')}}</Button>
-                                    <Button v-else :loading="loadIng > 0" type="text" @click="getLists">{{$L('刷新')}}</Button>
+                                    <Button v-else :loading="loadIng > 0" type="text" @click="getPermissionLists">{{$L('刷新')}}</Button>
                                 </div>
                             </Tooltip>
                         </li>
@@ -522,20 +522,20 @@ export default {
                             }, [h('div', this.$L('设为管理员'))]));
                         }
 
-                        // 授权操作
                         // if (identity.includes('temp')) {
                         //     dropdownItems.push(h('EDropdownItem', {
                         //         props: {
                         //             command: 'cleartemp',
                         //         },
-                        //     }, [h('div', this.$L('取消工作区授权'))]));
+                        //     }, [h('div', this.$L('取消临时身份'))]));
                         // } else {
                         //     dropdownItems.push(h('EDropdownItem', {
                         //         props: {
                         //             command: 'settemp',
                         //         },
-                        //     }, [h('div', this.$L('允许工作区授权'))]));
+                        //     }, [h('div', this.$L('设为临时帐号'))]));
                         // }
+                        // 授权操作
                         if (identity.includes('authus')) {
                             dropdownItems.push(h('EDropdownItem', {
                                 props: {
@@ -550,52 +550,6 @@ export default {
                             }, [h('div', this.$L('允许工作区授权'))]));
                         }
                         //---------------------
-
-                        dropdownItems.push(h('EDropdownItem', {
-                            props: {
-                                command: 'email',
-                            },
-                        }, [h('div', this.$L('修改邮箱'))]))
-
-                        dropdownItems.push(h('EDropdownItem', {
-                            props: {
-                                command: 'password',
-                            },
-                        }, [h('div', this.$L('修改密码'))]))
-
-                        if (this.checkinMac) {
-                            dropdownItems.push(h('EDropdownItem', {
-                                props: {
-                                    command: 'checkin_mac',
-                                },
-                            }, [h('div', this.$L('修改MAC'))]))
-                        }
-
-                        dropdownItems.push(h('EDropdownItem', {
-                            props: {
-                                command: 'department',
-                            },
-                        }, [h('div', this.$L('修改部门'))]))
-
-                        if (identity.includes('disable')) {
-                            dropdownItems.push(h('EDropdownItem', {
-                                props: {
-                                    command: 'cleardisable',
-                                },
-                                style: {
-                                    color: '#f90'
-                                }
-                            }, [h('div', this.$L('恢复帐号（已离职）'))]));
-                        } else {
-                            dropdownItems.push(h('EDropdownItem', {
-                                props: {
-                                    command: 'setdisable',
-                                },
-                                style: {
-                                    color: '#f90'
-                                }
-                            }, [h('div', this.$L('操作离职'))]));
-                        }
 
                         dropdownItems.push(h('EDropdownItem', {
                             props: {
@@ -772,7 +726,7 @@ export default {
         }
     },
     mounted() {
-        this.getLists();
+        this.getPermissionLists();
         this.getDepartmentLists();
     },
     watch: {
@@ -817,11 +771,47 @@ export default {
     methods: {
         onSearch() {
             this.page = 1;
-            this.getLists();
+            this.getPermissionLists();
         },
 
         // 获取列表
-        getLists() {
+        // getLists() {
+        //     this.loadIng++;
+        //     this.keyIs = $A.objImplode(this.keys) != "";
+        //     this.keyDisable = this.keys.disable === "yes";
+        //     let keys = $A.cloneJSON(this.keys)
+        //     if (this.departmentSelect > -1) {
+        //         // 将departmentSelect添加到keys中
+        //         keys = Object.assign(keys, {
+        //             department: this.departmentSelect
+        //         })
+        //     }
+        //     // 发送请求
+        //     this.$store.dispatch("call", {
+        //         url: 'users/lists',
+        //         data: {
+        //             keys,
+        //             get_checkin_mac: this.checkinMac ? 1 : 0,
+        //             page: Math.max(this.page, 1),
+        //             pagesize: Math.max($A.runNum(this.pageSize), 10),
+        //         },
+        //     }).then(({data}) => {
+        //         // 将返回的数据赋值给page、total、list、noText
+        //         this.page = data.current_page;
+        //         this.total = data.total;
+        //         this.list = data.data;
+        //         this.noText = '没有相关的成员';
+        //     }).catch(() => {
+        //         // 如果请求失败，将noText赋值为数据加载失败
+        //         this.noText = '数据加载失败';
+        //     }).finally(_ => {
+        //         // 加载中--
+        //         this.loadIng--;
+        //     })
+        // },
+
+         // 获取列表
+        getPermissionLists() {
             this.loadIng++;
             this.keyIs = $A.objImplode(this.keys) != "";
             this.keyDisable = this.keys.disable === "yes";
@@ -834,10 +824,9 @@ export default {
             }
             // 发送请求
             this.$store.dispatch("call", {
-                url: 'users/lists',
+                url: 'users/premission/lists',
                 data: {
                     keys,
-                    get_checkin_mac: this.checkinMac ? 1 : 0,
                     page: Math.max(this.page, 1),
                     pagesize: Math.max($A.runNum(this.pageSize), 10),
                 },
@@ -856,74 +845,50 @@ export default {
             })
         },
 
+
+
         setPage(page) {
             this.page = page;
-            this.getLists();
+            this.getPermissionLists();
         },
 
         setPageSize(pageSize) {
             this.page = 1;
             this.pageSize = pageSize;
-            this.getLists();
+            this.getPermissionLists();
         },
 
-        dropUser(name, row) {
-            switch (name) {
-                //授权设置
+        dropUser(command, row) {
+            switch (command) {
                 case 'setauthus':
-                    $A.modalConfirm({
-                        content: `你确定允许【ID:${row.userid}，${row.nickname}】授权工作区吗？`,
-                        loading: true,
-                        onOk: () => {
-                            return this.authUser({
+                this.operationUser({
+                    userid: row.userid,
+                    type: 'setauthus'
+                }).then(() => {
+                    this.$A.messageSuccess(this.$L('工作区授权成功'));
+                    return this.authUser({
                                 userid: row.userid,
                                 is_create : true,
                             });
-
-                            
-                        }
-                    });
-                    break;
-
-                case 'clearauthus':
-                    $A.modalConfirm({
-                        content: `你确定取消【ID:${row.userid}，${row.nickname}】的工作区授权吗？`,
-                        loading: true,
-                        onOk: () => {
-                            return this.authUser({
+                }).catch((error) => {
+                    this.$A.messageError(error);
+                });
+                break;
+            case 'clearauthus':
+                this.operationUser({
+                    userid: row.userid,
+                    type: 'clearauthus'
+                }).then(() => {
+                    this.$A.messageSuccess(this.$L('取消工作区授权成功'));
+                    return this.authUser({
                                 userid: row.userid,
-                                is_create: false,
-                            })
-                        }
-                    });
-                    break;
-                // case 'settemp':
-                //     $A.modalConfirm({
-                //         content: `你确定允许【ID:${row.userid}，${row.nickname}】授权工作区吗？`,
-                //         loading: true,
-                //         onOk: () => {
-                //             return this.authUser({
-                //                 userid: row.userid,
-                //                 is_create : true,
-                //             });
+                                is_create : false,
+                            });
+                }).catch((error) => {
+                    this.$A.messageError(error);
+                });
+                break;
 
-                            
-                //         }
-                //     });
-                //     break;
-
-                // case 'cleartemp':
-                //     $A.modalConfirm({
-                //         content: `你确定取消【ID:${row.userid}，${row.nickname}】的工作区授权吗？`,
-                //         loading: true,
-                //         onOk: () => {
-                //             return this.authUser({
-                //                 userid: row.userid,
-                //                 is_create: false,
-                //             })
-                //         }
-                //     });
-                //     break;
 
                 case 'email':
                     $A.modalInput({
@@ -1035,6 +1000,11 @@ export default {
             }
         },
 
+
+
+
+
+
         //在这里写authUser
         async authUser(data) {
             const apiUrl = 'http://127.0.0.1:5555/set';
@@ -1048,20 +1018,19 @@ export default {
                     }
                 });
                 console.log(response.data);
-
                 if (response.status !== 200) {
                     throw new Error('Network response was not ok');
                 }
-
                 console.log('Success:', response.data);
-                // Update the user's identity in the local state to reflect the change
-                this.updateUserState(data.userid, data.is_create,identity);
+                // this.getPermissionLists();
+                // 更新用户在本地状态中的身份，以反映变化
+                this.updateUserState(data.userid, data.is_create);
             } catch (error) {
                 console.error('Error:', error);
             }
         },
 
-        updateUserState(user_id, isCreate,identity) {
+        updateUserState(user_id, isCreate) {
             const user = this.user_id;
             if (user) {
                 if (isCreate) {
@@ -1071,12 +1040,10 @@ export default {
                 } else {
                     user.identity = user.identity.replace('authus', '');
                 }
-                // Manually trigger reactivity if needed
+                // 必要时手动触发反应性
                 this.$forceUpdate();
             }
         },
-
-
         operationUser(data, tipErr) {
             return new Promise((resolve, reject) => {
                 if (data.type == 'checkin_macs') {
@@ -1093,7 +1060,7 @@ export default {
                     data,
                 }).then(({msg}) => {
                     $A.messageSuccess(msg);
-                    this.getLists();
+                    this.getPermissionLists();
                     resolve()
                     if (data.type == 'checkin_macs') {
                         this.checkinMacEditShow = false;
@@ -1106,7 +1073,7 @@ export default {
                     if (tipErr === true) {
                         $A.modalError(msg);
                     }
-                    this.getLists();
+                    this.getPermissionLists();
                     reject(msg)
                 }).finally(_ => {
                     if (data.type == 'checkin_macs') {
@@ -1166,7 +1133,7 @@ export default {
             }).then(({msg}) => {
                 $A.messageSuccess(msg)
                 this.getDepartmentLists()
-                this.getLists()
+                this.getPermissionLists()
                 this.departmentShow = false
             }).catch(({msg}) => {
                 $A.modalError(msg);
