@@ -50,29 +50,42 @@
                                     class="avatar user-avatar" />
                             </div>
                         </div>
-                         <!-- 动画加载 -->
-                         <div v-if="isLoading" class="loading-spinner">wait a minute please...</div>
+                        <!-- 动画加载 -->
+                        <div v-if="isLoading" class="loading-spinner">wait a minute please...</div>
                     </div>
 
                 </div>
 
-                <DrawerOverlay v-model="drawerVisible" placement="right" :size="650">
+                <DrawerOverlay ref="drawer" v-model="drawerVisible" placement="right" :size="650">
                     <div class="ivu-modal-wrap-aiass">
                         <div class="ivu-modal-wrap-aiass-title">
                             {{ $L('历史会话记录') }}
                         </div>
                         <div class="ivu-modal-wrap-aiass-body">
                             <div class="history-list">
-                                <div v-for="conversation in historyConversations" :key="conversation.thread_slug"
-                                    @click="loadConversation(conversation)" class="history-item">
-                                    <img v-if="conversation.avatar" :src="conversation.avatar" alt="Bot Avatar"
-                                        class="history-avatar" />
+                                <!--  右键删除操作showContextMenu($event, conversation) 切换会话操作loadConversation(conversation)-->
+                                <div 
+                                    v-for="conversation in historyConversations" 
+                                    :key="conversation.thread_slug"
+                                    @contextmenu.prevent="showContextMenu($event, conversation)"  
+                                    @click="loadConversation(conversation)" 
+                                    class="history-item">
+                                    <img v-if="conversation.avatar" :src="conversation.avatar" alt="Bot Avatar" class="history-avatar" />
                                     <div class="history-info">
                                         <div class="history-title">{{ conversation.modelName }}</div>
                                         <div class="last-message">{{ conversation.lastMessage }}</div>
                                         <div class="last-time">{{ conversation.updatedAt }}</div>
                                     </div>
                                 </div>
+                            </div>
+                            <!-- 右键菜单 点击操作deleteConversation -->
+                            <div 
+                                v-if="contextMenuVisible" 
+                                class="click-menu" 
+                                :style="{ top: `${contextMenuY}px`, left: `${contextMenuX}px` }"
+                                @click="deleteConversation"
+                                >
+                                <div>删除会话</div>
                             </div>
                         </div>
                     </div>
@@ -212,6 +225,10 @@ export default {
             userInput: "",// 20240926
             slug: "workspace-for-user-1", // Example slug for the workspace
             historyConversations: [], // 存储历史会话记录
+            contextMenuVisible: false, // 控制菜单是否显示
+            contextMenuX: 0, // 菜单 X 坐标
+            contextMenuY: 0, // 菜单 Y 坐标
+            selectedConversation: null, // 选中的会话
             isLoading: false, // 加载动画
         }
     },
@@ -227,7 +244,6 @@ export default {
         this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
 
     },
-
 
     mounted() {
         // 初始化会话出现前加载动画
@@ -260,6 +276,13 @@ export default {
             })
             this.isLoading = false; // 加载结束
 
+            // 删除操作，右键菜单处理（点击其他地方关闭菜单）
+            document.addEventListener('click', this.closeContextMenu); 
+        
+    },
+
+    beforeDestroy() {
+        document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
     },
 
     computed: {
@@ -273,36 +296,6 @@ export default {
                 return '发送图片'
             }
             return '发送文件'
-        },
-        msgTags({ dialogData }) {
-            const array = [
-                { type: '', label: '消息' },
-            ];
-            if (dialogData.has_tag) {
-                array.push({ type: 'tag', label: '标注' })
-            }
-            if (dialogData.has_todo) {
-                array.push({ type: 'todo', label: '事项' })
-            }
-            if (dialogData.has_image) {
-                array.push({ type: 'image', label: '图片' })
-            }
-            if (dialogData.has_file) {
-                array.push({ type: 'file', label: '文件' })
-            }
-            if (dialogData.has_link) {
-                array.push({ type: 'link', label: '链接' })
-            }
-            if (dialogData.group_type === 'project') {
-                array.push({ type: 'project', label: '打开项目' })
-            }
-            if (dialogData.group_type === 'task') {
-                array.push({ type: 'task', label: '打开任务' })
-            }
-            if (dialogData.group_type === 'okr') {
-                array.push({ type: 'okr', label: '打开OKR' })
-            }
-            return array
         },
         ...mapState([
             'userInfo',
@@ -476,7 +469,6 @@ export default {
                 { text: `你好！我是 ${this.newselect} ，欢迎使用！`, isBot: true, avatar: this.botAvatar }
             ];
             this.messages = initialMessages;
-
             // 关闭对话框
             this.newchat = false;
         },
@@ -505,9 +497,9 @@ export default {
                 if (Array.isArray(response.data)) {
                     this.historyConversations=[]
                     response.data.forEach(item => {
+                        // 经过if过滤掉当前会话
                         if (this.thread_slug != item.session_id) {
                             var temp = {
-
                                 "thread_slug": item.session_id || '',
                                 "avatar": item.avatar || '',
                                 "modelName": item.model || '未知模型',
@@ -519,7 +511,7 @@ export default {
                         }
                     })
                     
-                    console.log('====================================');
+                    console.log('============所有历史会话==============');
                     console.log(this.historyConversations);
                     console.log('====================================');
                 } else {
@@ -547,12 +539,10 @@ export default {
                     }
                 });
 
-                console.log('对话记录:', response.data);
-                // 处理获取到的对话记录，例如保存到某个数据属性中
+                console.log('对话记录:', response.data); // 打印完整的响应数据
 
                 // 处理返回的历史消息
                 const history = response.data.history;
-
                 this.messages = history.map(message => ({
                     text: message.content, // 消息内容
                     isBot: message.role === 'assistant', // 判断消息角色
@@ -565,12 +555,10 @@ export default {
                     const chatBox = this.$refs.chatBox;
                     chatBox.scrollTop = chatBox.scrollHeight;
                 });
-
             } catch (error) {
                 console.error('获取对话记录失败:', error);
                 this.$message.error('获取对话记录失败，请稍后重试。');
             }
-
             // 更新最后一条消息
             if (!isInit) {
             
@@ -581,9 +569,55 @@ export default {
                 this.fetchHistoryConversations(); //展示历史会话记录方法`
             }
         },
+        //历史列表右键菜单
+        showContextMenu(event, conversation) {
+            event.preventDefault(); // 阻止网页自带的右键菜单
 
+            this.contextMenuX = event.clientX - 1400; // 相对 X 坐标
+            this.contextMenuY = event.clientY - 50; // 相对 Y 坐标
 
-        //下拉框的模型选择，对应setting的模型选择
+            this.contextMenuVisible = true; // 显示右键菜单
+            this.selectedConversation = conversation; // 存储选中的会话
+            console.log('查看删除id:', this.selectedConversation.thread_slug);
+        },
+
+        //右键菜单点击删除操作
+        async deleteConversation() {
+            if (!this.selectedConversation) return; // 确保有选中的会话，没有的话reture退出当前函数
+            const payload = {workspaceSlug: this.slug, threadSlug: this.selectedConversation.thread_slug};
+
+            try {
+                const response = await axios({
+                    method: 'DELETE',
+                    url: 'http://192.168.31.140:5555/delete-session',
+                    data: payload, // 传递要删除的会话 ID
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                if (response.status === 200) {
+                    this.fetchHistoryConversations(); // 刷新历史会话列表
+                    this.$message.success('会话删除成功'); // 显示成功提示
+                } else {
+                    this.$message.error('删除会话失败，请稍后重试。'); // 显示失败提示
+                }
+            } catch (error) {
+                console.error('删除会话失败', error);
+                this.$message.error('删除会话失败，请稍后重试。');
+            } finally {
+                this.contextMenuVisible = false; // 隐藏右键菜单
+                this.selectedConversation = null; // 清空选中的会话
+            }
+        },
+
+        //关闭右键删除菜单
+        closeContextMenu() {
+            this.contextMenuVisible = false; 
+            this.selectedConversation = null; // 清空选中的会话
+        },
+
+        //下拉框的模型选择，对应setting的模型选择   
         onOptionChange() {
             if (!this.newselect) return; // 确保选中了模型
             // 关闭对话框
@@ -594,7 +628,7 @@ export default {
         aisetForm() {
             this.goForward({
                 name: 'manage-aisetting',
-                params: { newselect: this.newselect } // 传递选择的模型
+                // params: { newselect: this.newselect } // 传递选择的模型
 
             });
         },
@@ -709,3 +743,30 @@ export default {
     }
 }
 </script>
+
+<style>
+.click-menu {
+    position: absolute;
+    background: rgb(248, 248, 248);
+    color: #000000;
+    border: 2px solid #63e47a;;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: block;
+    border-radius: 10px;
+}
+
+.click-menu div {
+    padding: 10px;
+    width: 150px;
+    height: 40px;
+    cursor: pointer;
+}
+
+.click-menu div:hover {    
+    /* 悬停时效果 */
+    background-color: #86eeb7;
+    color: white;
+}
+
+</style>

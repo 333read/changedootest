@@ -19,6 +19,7 @@
                             <el-select v-model="selectedLLM" prop="selectedLLM"  class="llm-select" @change="updateLLM"  filterable>
                                 <template slot="prefix">
                                     <img :src="currentChat.img" class="prefix-llm-icon" />
+                                    <!-- <p style="">{{ currentChat.desc }}</p> -->
                                 </template>
                                 <el-option
                                     v-for="item in aichatList"
@@ -212,31 +213,19 @@ export default {
                         value: 'openai',
                         label: 'ChatGPT',
                         desc:'The fastest LLM inferencing available for real-time AI applications.',
-                        img: '/images/avatar/default_openai.png'
+                        img: '/images/avatar/modal_openai.png'
                     },
                     {
                         value: "gemini",
                         label: "Gemini",
                         desc:'The fastest LLM inferencing available for real-time AI applications.',
-                        img: '/images/avatar/default_gemini.png'
-                    },
-                    {
-                        value: "claude",
-                        label: "Claude",
-                        desc:'The fastest LLM inferencing available for real-time AI applications.',
-                        img: '/images/avatar/default_claude.png'
-                    },
-                    {
-                        value: "custom",
-                        label: "Custom",
-                        desc:'The fastest LLM inferencing available for real-time AI applications.',
-                        img: '/images/avatar/default_anything.png'
+                        img: '/images/avatar/modal_gemini.png'
                     },
                     {
                         value: "ollama",
                         label: "Ollama",
                         desc:'Run LLMs locallly on your machine.',
-                        img: '/images/avatar/default_llo.png'
+                        img: '/images/avatar/modal_llo.png'
                     },
                 ],
                 isExpanded: false, // 控制下拉菜单的显示与隐藏
