@@ -265,6 +265,21 @@
                 color: #888; /* 时间颜色 */
             }
     }
+
+}
+.loading-spinner {
+    text-align: center;
+    padding: 10px;
+    font-size: 16px;
+    color: #0e0e0e;
+    animation: spin 1s linear infinite; /* 添加动画效果 */
+    z-index: 9999;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(16deg); }
+
 }
 
 

@@ -12,6 +12,7 @@
                         <Icon type="ios-settings-outline" />
                     </div>
 
+                    <!-- 下拉框的模型选择 -->
                     <div class="nav-select">
                         <el-select v-model="selectsetting" class="bot-select" @change="onOptionChange">
                             <el-option label="ChatGPT" value="ChatGPT"></el-option>
@@ -26,9 +27,11 @@
                     <Icon @click="toggleDrawer" type="ios-clock-outline" />
                 </div>
             </div>
+
             <div class="aiassistant-content">
                 <div>
                     <div class="chatBox" ref="chatBox">
+                        <!-- 遍历所有消息 -->
                         <div v-for="(message, index) in messages" :key="index" class="message">
                             <!-- 机器人消息 -->
                             <div v-if="message.isBot" class="message-content bot-message">
@@ -42,12 +45,13 @@
                             <div v-else class="message-content user-message">
                                 <div class="text-content">
                                     {{ message.text }}
-
                                 </div>
                                 <img v-if="message.avatar" :src="message.avatar" alt="User Avatar"
                                     class="avatar user-avatar" />
                             </div>
                         </div>
+                         <!-- 动画加载 -->
+                         <div v-if="isLoading" class="loading-spinner">wait a minute please...</div>
                     </div>
 
                 </div>
@@ -208,6 +212,7 @@ export default {
             userInput: "",// 20240926
             slug: "workspace-for-user-1", // Example slug for the workspace
             historyConversations: [], // 存储历史会话记录
+            isLoading: false, // 加载动画
         }
     },
 
@@ -225,33 +230,35 @@ export default {
 
 
     mounted() {
-        // 初始化时自动触发新建会话
-        // 初始化时选择 Custom 模型并自动触发新建会话
+        // 初始化会话出现前加载动画
+        this.isLoading = true;
+        // 初始化若已存在历史会话，则自动加载，否则新建
         const response = axios.post(`http://192.168.31.140:5555/get-sessionid`,
-                    {
-                        user_id: this.userInfo.userid
-                    },
-                        {
-                            headers: {
-                                'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
-                                'Content-Type': 'application/json',
-                            }
-                        }).then(response => {
-                            if(response.data.session_id){
-            var item=response.data;
-            var temp = {
-                "thread_slug": item.session_id ,
-                "avatar": item.avatar ,
-                "modelName": item.model ,
-                "lastMessage": item.last_messages ,
-                "updatedAt": item.update_time
+            {user_id: this.userInfo.userid},
+            {
+                headers: {
+                        'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
+                        'Content-Type': 'application/json',
+                        }
+            }).then(response => {
+                if(response.data.session_id){
+                    var item=response.data;
+                    var temp = {
+                        "thread_slug": item.session_id ,
+                        "avatar": item.avatar ,
+                        "modelName": item.model ,
+                        "lastMessage": item.last_messages ,
+                        "updatedAt": item.update_time
+                        }
+                    this.loadConversation(temp,true)
+                }else{
+                    this.newselect = 'Custom'; // 设置为 Custom 模型
+                    this.startNewChat(); // 自动触发新建会话
                 }
-            this.loadConversation(temp,true)
-        }else{
-        this.newselect = 'Custom'; // 设置为 Custom 模型
-        this.startNewChat(); // 自动触发新建会话
-        }
-                        });
+            }).catch(error => {
+                console.error("获取初始化session_id失败", error);
+            })
+            this.isLoading = false; // 加载结束
 
     },
 
@@ -309,9 +316,14 @@ export default {
         //20240920
         async sendMessage() {
             if (!this.userInput.trim()) return;
+            
+            //清空发送后的消息
+            const userMessage = this.userInput;
+            this.userInput = "";
+            
             // 添加用户消息
             this.messages.push({
-                text: this.userInput,
+                text: userMessage,
                 isBot: false,
                 avatar: this.userInfo.userimg,
                 user_id: this.userInfo.userid,
@@ -321,20 +333,22 @@ export default {
                 const chatBox = this.$refs.chatBox;
                 chatBox.scrollTop = chatBox.scrollHeight;
             });
+
+            //加载状态
             this.isLoading = true;
+            
 
             //权限处理
             try {
                 const authResponse = await axios.post('http://192.168.31.140:5555/get-user',
                     { user_id: this.userInfo.userid },
                     { headers: { 'Content-Type': 'application/json', } });
-
                 if (authResponse.data.is_create) { // 假设返回的权限字段为hasPermission
                     console.log('获取', this.thread_slug)
                     //chat请求(临时的开启服务器解决跨域)
                     const response = await axios.post(`http://103.63.139.165:3001/api/v1/workspace/${this.slug}/thread/${this.thread_slug}/chat`,
                         {
-                            message: this.userInput,
+                            message: userMessage,
                             mode: "chat"  // 添加聊天模式 查询query 聊天chat
                         },
                         {
@@ -343,8 +357,7 @@ export default {
                                 'Content-Type': 'application/json',
                             }
                         });
-
-
+                    
                     // 机器人输出的消息
                     const concatenatedResponse = response.data.textResponse;
                     this.messages.push({
@@ -363,7 +376,6 @@ export default {
                         avatar: this.botAvatar,
                     });
                 }
-
             } catch (error) {
                 console.error("Error sending message:", error);
                 this.messages.push({
@@ -372,8 +384,7 @@ export default {
                     avatar: this.botAvatar,
                 });
             } finally {
-                this.isLoading = false;
-                this.userInput = "";
+                this.isLoading = false; // 加载结束
                 this.$nextTick(() => {
                     const chatBox = this.$refs.chatBox;
                     chatBox.scrollTop = chatBox.scrollHeight;
@@ -381,9 +392,34 @@ export default {
             }
         },
 
+
+        //更新最后一条信息保存到数据库
+        async updateLastMessage(threadSlug, lastMessage = '') {
+            try {
+                await axios.post('http://192.168.31.140:5555/update-last', {
+                    workspaceSlug: this.slug,
+                    threadSlug: threadSlug,
+                    lastMessage: lastMessage // 可选的最后一条消息
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                console.log('更新最后一条消息成功');
+            } catch (error) {
+                console.error('保存最后一条消息失败:', error);
+                if (error.response) {
+                    console.error('响应状态码:', error.response.status);
+                    console.error('响应数据:', error.response.data);
+                }
+            }
+        },
+
+        //新建时打开模型选择
         openModelSelection() {
             this.newchat = true; // 打开模型选择对话框
         },
+        //新建聊天确定时
         async startNewChat() {
             if (!this.newselect) return; // 确保选中了模型
 
@@ -406,24 +442,8 @@ export default {
 
             if (lastMessage) {
                 console.log(currentThreadSlug)
-                try {
-
-                    await axios.post('http://192.168.31.140:5555/update-last', {
-                        workspaceSlug: this.slug,
-                        threadSlug: currentThreadSlug // 指定 thread_slug
-                    }, {
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    console.log('更新最后一条消息成功');
-                } catch (error) {
-                    console.error("Error updating last message:", error);
-                }
+                await this.updateLastMessage(currentThreadSlug); // 更新最后一条消息
             }
-
-
-
             // 调用新建会话接口
             try {
                 const response = await axios.post('http://192.168.31.140:5555/new',
@@ -513,7 +533,6 @@ export default {
         },
         //切换历史会话
         async loadConversation(conversation,isInit=false) {
-
             try {
                 // 判断当前会话是否是历史会话
                 console.log('切换会话:', conversation);
@@ -554,30 +573,13 @@ export default {
 
             // 更新最后一条消息
             if (!isInit) {
-                try {
-                const lastMessage = this.messages[this.messages.length - 1]; // 获取最后一条消息
-                await axios.post('http://192.168.31.140:5555/update-last', {
-                    workspaceSlug: this.slug,
-                    threadSlug: this.thread_slug,
-                    lastMessage: lastMessage ? lastMessage.text : ''
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                console.log('更新最后一条消息成功');
-            } catch (error) {
-                console.error('保存最后一条消息失败:', error);
-                if (error.response) {
-                    console.error('响应状态码:', error.response.status);
-                    console.error('响应数据:', error.response.data);
-                }
-            }
-            this.drawerVisible = false;
-            this.fetchHistoryConversations();
-            }
             
-
+                const lastMessage = this.messages[this.messages.length - 1]; // 获取最后一条消息
+                await this.updateLastMessage(this.thread_slug,lastMessage ? lastMessage.text : '（暂无更新记录）'); // 更新最后一条消息
+                
+                this.drawerVisible = false;
+                this.fetchHistoryConversations(); //展示历史会话记录方法`
+            }
         },
 
 
