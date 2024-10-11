@@ -15,10 +15,9 @@
                     <!-- 下拉框的模型选择 -->
                     <div class="nav-select">
                         <el-select v-model="selectsetting" class="bot-select" @change="onOptionChange">
-                            <el-option label="ChatGPT" value="ChatGPT"></el-option>
-                            <el-option label="Gemini" value="gemini"></el-option>
-                            <el-option label="Claude" value="claude"></el-option>
-                            <el-option label="Custom" value="custom"></el-option>
+                            <el-option label="openai" value="openai"></el-option>
+                            <el-option label="gemini" value="gemini"></el-option>
+                            <el-option label="ollama" value="ollama"></el-option>
                         </el-select>
                     </div>
                 </div>
@@ -177,10 +176,6 @@ export default {
             type: Object,
             default: () => ({})
         },
-        selectsetting: {
-            type: String,
-            default: 'Ollama'
-        }
     },
     data() {
         return {
@@ -190,7 +185,7 @@ export default {
             newchat: false,
             modelDialogVisible: false,
             newselect: '',
-            selectsetting: '',
+            selectsetting: 'openai',
             showMore: false,
             drawerVisible: false,
             botAvatar: '/images/avatar/default_anything.png',
@@ -273,6 +268,8 @@ export default {
                 }
             }).catch(error => {
                 console.error("获取初始化session_id失败", error);
+                // alert("暂时无与AI助手聊天的权限");
+                
             })
             this.isLoading = false; // 加载结束
 
@@ -302,6 +299,51 @@ export default {
         ])
     },
     methods: {
+
+        //下拉框的模型选择，对应setting的模型选择   
+        async onOptionChange() {
+            const workspaceSlug = this.slug; // 替换为你的 workspaceSlug
+            const url = `http://103.63.139.165:3001/api/v1/workspace/${workspaceSlug}/update`;
+
+            let paymodal;
+            switch (this.selectsetting) {
+                case 'openai':
+                    paymodal = {
+                        chatProvider: 'openai',
+                        chatModel: 'gpt-4o',
+                    };
+                    break;
+                case 'gemini':
+                    paymodal = {
+                        chatProvider: 'gemini',
+                        chatModel: 'gemini-1.0-pro',
+                    };
+                    break;
+                case 'ollama':
+                    paymodal = {
+                        chatProvider: 'ollama',
+                        chatModel: 'glm4:9b',
+                    };
+                    break;
+                default:
+                    return; 
+            }
+
+            try {
+                const response = await axios.post(url, paymodal, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
+                        'Content-Type': 'application/json',
+                    },
+                });
+                console.log('Response:', response.data);
+            } catch (error) {
+                console.error('Error updating model:', error);
+            }
+                
+        },
+
         //20240924
         sanitizedBotMessage(text) {
             return DOMPurify.sanitize(renderMarkdown(text));
@@ -360,9 +402,9 @@ export default {
                         session_id: this.sessionId, // 保存sessionId
                         user_id: this.userInfo.userid,
                     });
-                    console.log(this.userInfo);
+                    console.log('查看是否带admin标识',this.userInfo);
 
-                } else {
+                } else if(response.error.response.status === 500) {
                     this.messages.push({
                         text: "抱歉，此用户无聊天权限。",
                         isBot: true,
@@ -617,12 +659,6 @@ export default {
             this.selectedConversation = null; // 清空选中的会话
         },
 
-        //下拉框的模型选择，对应setting的模型选择   
-        onOptionChange() {
-            if (!this.newselect) return; // 确保选中了模型
-            // 关闭对话框
-            this.newchat = false;
-        },
 
         //setting弹窗
         aisetForm() {

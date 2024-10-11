@@ -61,26 +61,38 @@
                             </Col>
                         </Row>    
                     </el-form>
-
-                    <el-form v-if="selectedLLM === 'claude'" :model="claudeSettings">
+                    <el-form v-if="selectedLLM === 'gemini'" :model="geminiSettings">
                         <Row class="aiassistant-form-row" >
                             <Col flex="200px">
                                 <el-form-item label="API Key">
-                                    <Input v-model="claudeSettings.apiKey"  class="form-input" type="password" size="large" />
+                                    <Input v-model="geminiSettings.apiKey"  class="form-input" type="password" size="large" />
                                 </el-form-item>
                             </Col>
                             <Col flex="100px"></Col>
                             <Col flex="200px">
                                 <el-form-item label="Chat Model Selection">
-                                    <el-select v-model="claudeSettings.model" class="form-select">
-                                        <el-option label="gpt-3.5-turbo" value="gpt-3.5-turbo"></el-option>
-                                        <el-option label="gpt-4" value="gpt-4"></el-option>
+                                    <el-select v-model="geminiSettings.model" class="form-select">
+                                        <el-option label="gemini-pro" value="gemini-pro"></el-option>
+                                        <el-option label="gemini-1.0-pro" value="gemini-1.0-pro"></el-option>
+                                        <el-option label="gemini-1.5-pro-lastest" value="gemini-1.5-pro-lastest"></el-option>
+                                        <el-option label="gemini-1.5-flash-lastest" value="gemini-1.5-flash-lastest"></el-option>
+                                        <el-option label="gemini-1.5-pro-exp-0801" value="gemini-1.5-pro-exp-0801"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </Col>
+                            <Col flex="100px"></Col>
+                            <Col flex="200px">
+                                <el-form-item label="Safety Setting">
+                                    <el-select v-model="geminiSettings.safeset" class="form-select">
+                                        <el-option label="None" value="None"></el-option>
+                                        <el-option label="Block few" value="Block few"></el-option>
+                                        <el-option label="Block some(default)" value="Block some(default)"></el-option>
+                                        <el-option label="Block most" value="Block most"></el-option>
                                     </el-select>
                                 </el-form-item>
                             </Col>
                         </Row>    
                     </el-form>
-
                     <el-form v-if="selectedLLM === 'ollama'" :model="ollamaSettings">
 
                         <Row class="aiassistant-form-row">
@@ -145,7 +157,25 @@
                                 </div>
                             </div>                
                         </Row>
-                    </el-form>                                                                       
+                    </el-form>  
+                    <el-form v-if="selectedLLM === 'claude'" :model="claudeSettings">
+                        <Row class="aiassistant-form-row" >
+                            <Col flex="200px">
+                                <el-form-item label="API Key">
+                                    <Input v-model="claudeSettings.apiKey"  class="form-input" type="password" size="large" />
+                                </el-form-item>
+                            </Col>
+                            <Col flex="100px"></Col>
+                            <Col flex="200px">
+                                <el-form-item label="Chat Model Selection">
+                                    <el-select v-model="claudeSettings.model" class="form-select">
+                                        <el-option label="gpt-3.5-turbo" value="gpt-3.5-turbo"></el-option>
+                                        <el-option label="gpt-4" value="gpt-4"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </Col>
+                        </Row>    
+                    </el-form>                                                                     
                 </div>
             </div>
         </div>
@@ -186,6 +216,11 @@ export default {
             openAISettings: {
                 apiKey: '123456',
                 model: 'gpt-3.5-turbo',
+            },
+            geminiSettings: {
+                apiKey: '123456',
+                model: 'gemini-pro',
+                safeset:'Block some(default)',
             },
             claudeSettings:{
                 apiKey: '123456',

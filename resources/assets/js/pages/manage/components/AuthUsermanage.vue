@@ -522,19 +522,6 @@ export default {
                             }, [h('div', this.$L('设为管理员'))]));
                         }
 
-                        // if (identity.includes('temp')) {
-                        //     dropdownItems.push(h('EDropdownItem', {
-                        //         props: {
-                        //             command: 'cleartemp',
-                        //         },
-                        //     }, [h('div', this.$L('取消临时身份'))]));
-                        // } else {
-                        //     dropdownItems.push(h('EDropdownItem', {
-                        //         props: {
-                        //             command: 'settemp',
-                        //         },
-                        //     }, [h('div', this.$L('设为临时帐号'))]));
-                        // }
                         // 授权操作
                         if (identity.includes('authus')) {
                             dropdownItems.push(h('EDropdownItem', {
