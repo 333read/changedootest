@@ -180,13 +180,15 @@
             </div>
         </div>
         <div class="setting-footer" style="">
-                <Button :loading="loadIng > 0" class="footer-button" type="primary" @click="submitForm">{{$L('提交')}}</Button>
-                <Button :loading="loadIng > 0" class="footer-button" @click="resetForm" style="margin-left: 8px">{{$L('重置')}}</Button>
+                <Button  class="footer-button" type="primary" @click="submitForm">{{$L('提交')}}</Button>
+                <Button  class="footer-button" @click="resetForm" style="margin-left: 8px">{{$L('重置')}}</Button>
         </div>
     </div>
 </template>    
 <script>
 import { Row } from 'view-design-hi';
+import { mapState } from 'vuex';
+import axios from 'axios';
 
 export default {
     props:{
@@ -204,15 +206,16 @@ export default {
         },
         selectedLLM:{
             default: 'openai',
-            type: String
+            type: String,
+            // required: true
         }
         },
     
     data() {
         return {
             newselect: '', // 初始化选择的模型
-
-            selectedLLM: '',
+            // selectedLLM:'',
+            localLLM: this.selectedLLM, // 本地使用选择的模型
             openAISettings: {
                 apiKey: '123456',
                 model: 'gpt-3.5-turbo',
@@ -246,24 +249,25 @@ export default {
             aichatList: [
                     {
                         value: 'openai',
-                        label: 'ChatGPT',
+                        label: 'openai',
                         desc:'The fastest LLM inferencing available for real-time AI applications.',
                         img: '/images/avatar/modal_openai.png'
                     },
                     {
                         value: "gemini",
-                        label: "Gemini",
+                        label: "gemini",
                         desc:'The fastest LLM inferencing available for real-time AI applications.',
                         img: '/images/avatar/modal_gemini.png'
                     },
                     {
                         value: "ollama",
-                        label: "Ollama",
+                        label: "ollama",
                         desc:'Run LLMs locallly on your machine.',
                         img: '/images/avatar/modal_llo.png'
                     },
                 ],
                 isExpanded: false, // 控制下拉菜单的显示与隐藏
+                slug: "workspace-for-user-1", // 工作区设置
             }
         },
 
@@ -273,16 +277,26 @@ export default {
             if (newselect) {
                 this.newselect = newselect; // 设置初始值
             }
+            this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
         },
 
 
-
         computed: {
+            ...mapState(['userInfo']),
             currentChat() {
                 return this.aichatList.find(item => item.value === this.selectedLLM) || {};
                 }
             },
+
+        // 监听子组件数据变化
+        watch:{
+            selectedLLM(newVal){
+                this.localLLM = newVal;
+            },
+        },
+
         methods:{
+
             aimodalselect(item){
                 console.log("aimodalselect", item)
                 this.newchat = false,
@@ -291,12 +305,79 @@ export default {
                 this.chatdesc = item.desc 
             },
             toggle(){
-                this.isExpanded = !this.isExpanded; // 切换下拉菜单的显示与隐藏
+                this.isExpanded = !this.isExpanded; // ollama切换下拉菜单的显示与隐藏
             },
+
+            //当选择变化时更新其他相关数据
             updateLLM() {
-            // 当选择变化时更新其他相关数据（如果需要）
                 console.log("选择的LLM:", this.currentChat);
-            }
+            },
+
+            //确定提交表单时
+            async submitForm() {
+                const workspaceSlug = this.slug; // 替换为你的 workspace slug
+                const url = `http://103.63.139.165:3001/api/v1/workspace/${workspaceSlug}/update`;
+                
+                let paymodal;
+
+                switch (this.selectedLLM) {
+                    case 'openai':
+                        paymodal = {
+                                chatProvider: 'openai',
+                                chatModel: this.openAISettings.model,
+                                apiKey: this.openAISettings.apiKey,
+                            };
+                            break;
+                    case 'gemini':
+                        paymodal = {
+                                chatProvider: 'gemini',
+                                chatModel: this.geminiSettings.model,
+                                apiKey: this.geminiSettings.apiKey,
+                                safeset: this.geminiSettings.safeset,
+                            };
+                        break;
+                    case 'ollama':
+                        paymodal = {
+                                chatProvider: 'ollama',
+                                chatModel: this.ollamaSettings.model,
+                                maxToken: this.ollamaSettings.maxToken,
+                                baseUrl: this.ollamaSettings.baseUrl,
+                            };
+                        break;
+                    default:
+                        return; // 如果没有选择有效的模型，则提前返回
+                }
+
+                try {
+                    const response = await axios.post(url, paymodal, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    console.log('Response:', response.data);
+                    this.$message.success('设置成功');
+                    // 处理成功
+                } catch (error) {
+                    console.error('提交表单时出错:', error);
+                    // 处理错误
+                }
+            },
+
+             // 重置表单字段的逻辑
+            resetForm() {
+                this.openAISettings = {};
+                this.geminiSettings = {};
+                this.ollamaSettings = {};
+                this.claudeSettings = {};
+                this.selectedLLM = ''; // 重置选择
+            },
+
+            // 通知父组件更新同步模型
+            notifyParent() {
+                this.$emit('update-llm', this.localLLM); // 通知父组件
+            },
         },
 }
 </script>

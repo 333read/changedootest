@@ -19,6 +19,7 @@
                             <el-option label="gemini" value="gemini"></el-option>
                             <el-option label="ollama" value="ollama"></el-option>
                         </el-select>
+                        <!-- <ChildComponent :selected-llm="selectsetting" @update-llm="updateSelectSetting" /> -->
                     </div>
                 </div>
                 <!-- 历史会话图标 -->
@@ -152,6 +153,7 @@
 </template>
 
 <script>
+import ChildComponent from './aisetting/index'
 import DOMPurify from "dompurify";
 import renderMarkdown from "./aisetting/utils/markdown";
 import { mapState } from 'vuex';
@@ -161,6 +163,7 @@ import { data } from "jquery";
 export default {
     components: {
         DrawerOverlay,
+        ChildComponent,
     },
 
     props: {
@@ -244,7 +247,7 @@ export default {
         // 初始化会话出现前加载动画
         this.isLoading = true;
         // 初始化若已存在历史会话，则自动加载，否则新建
-        const response = axios.post(`http://192.168.31.140:5555/get-sessionid`,
+        const response = axios.post(`http://localhost:5555/get-sessionid`,
             {user_id: this.userInfo.userid},
             {
                 headers: {
@@ -252,6 +255,7 @@ export default {
                         'Content-Type': 'application/json',
                         }
             }).then(response => {
+                console.log('Response:', response.data);
                 if(response.data.session_id){
                     var item=response.data;
                     var temp = {
@@ -299,63 +303,101 @@ export default {
         ])
     },
     methods: {
+        //权限判断
+        async checkPermission() {
+            const url = `http://localhost:5555/get-user`;
+            try {
+                const response = await axios.post(url,
+                { user_id: this.userInfo.userid }, 
+                {headers: {'Content-Type': 'application/json',},});
+                return  response.data.is_create;
+                // if (authResponse.data.is_create)
+            } catch (error) {
+                console.error('权限检查时出错:', error);
+                alert('权限检查失败，请稍后再试');
+                return false; // 返回 false 表示权限检查失败
+            }
+        },
+
 
         //下拉框的模型选择，对应setting的模型选择   
         async onOptionChange() {
-            const workspaceSlug = this.slug; // 替换为你的 workspaceSlug
-            const url = `http://103.63.139.165:3001/api/v1/workspace/${workspaceSlug}/update`;
-
-            let paymodal;
-            switch (this.selectsetting) {
-                case 'openai':
-                    paymodal = {
-                        chatProvider: 'openai',
-                        chatModel: 'gpt-4o',
-                    };
-                    break;
-                case 'gemini':
-                    paymodal = {
-                        chatProvider: 'gemini',
-                        chatModel: 'gemini-1.0-pro',
-                    };
-                    break;
-                case 'ollama':
-                    paymodal = {
-                        chatProvider: 'ollama',
-                        chatModel: 'glm4:9b',
-                    };
-                    break;
-                default:
-                    return; 
-            }
-
-            try {
-                const response = await axios.post(url, paymodal, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
-                        'Content-Type': 'application/json',
-                    },
-                });
-                console.log('Response:', response.data);
-            } catch (error) {
-                console.error('Error updating model:', error);
-            }
-                
+            const hasPermission = await this.checkPermission();
+            if (hasPermission) {
+                let paymodal;
+                switch (this.selectsetting) {
+                    case 'openai':
+                        paymodal = {
+                            chatProvider: 'openai',
+                            chatModel: 'gpt-4o',
+                        };
+                        break;
+                    case 'gemini':
+                        paymodal = {
+                            chatProvider: 'gemini',
+                            chatModel: 'gemini-1.0-pro',
+                        };
+                        break;
+                    case 'ollama':
+                        paymodal = {
+                            chatProvider: 'ollama',
+                            chatModel: 'glm4:9b',
+                        };
+                        break;
+                    default:
+                        return; 
+                }
+                const updateUrl = `http://103.63.139.165:3001/api/v1/workspace/${this.slug}/update`;
+                try {
+                    const response = await axios.post(updateUrl, paymodal, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    console.log('Response:', response.data);
+                } catch (error) {
+                    console.error('Error updating model:', error);
+                }
+            }else{
+                // 没有权限，弹出提示
+                alert('您没有权限进行此操作');
+            }   
         },
 
-        //20240924
+        //当setting子组件模型选择变化，父组件也同步更新
+        updateSelectSetting(newValue) {
+            this.selectsetting = newValue; // 更新父组件的选择
+        },
+
+        //setting弹窗
+        //增加权限判断，只有管理员和有权限的用户才可以进行模型设置
+        async aisetForm() {
+            const hasPermission = await this.checkPermission();
+            if (hasPermission) {
+                // 有权限，进行跳转
+                this.goForward({
+                    name: 'manage-aisetting',
+                });
+            } else {
+                // 没有权限，弹出提示
+                alert('您没有权限访问此页面');
+            }
+        },
+
+
+
+        //机器人回复消息存在代码内容进行解析
         sanitizedBotMessage(text) {
             return DOMPurify.sanitize(renderMarkdown(text));
         },
-        //20240920
+        //发送消息方法
         async sendMessage() {
             if (!this.userInput.trim()) return;
-            
             //清空发送后的消息
             const userMessage = this.userInput;
             this.userInput = "";
-            
             // 添加用户消息
             this.messages.push({
                 text: userMessage,
@@ -368,14 +410,12 @@ export default {
                 const chatBox = this.$refs.chatBox;
                 chatBox.scrollTop = chatBox.scrollHeight;
             });
-
             //加载状态
             this.isLoading = true;
-            
 
             //权限处理
             try {
-                const authResponse = await axios.post('http://192.168.31.140:5555/get-user',
+                const authResponse = await axios.post('http://localhost:5555/get-user',
                     { user_id: this.userInfo.userid },
                     { headers: { 'Content-Type': 'application/json', } });
                 if (authResponse.data.is_create) { // 假设返回的权限字段为hasPermission
@@ -431,7 +471,7 @@ export default {
         //更新最后一条信息保存到数据库
         async updateLastMessage(threadSlug, lastMessage = '') {
             try {
-                await axios.post('http://192.168.31.140:5555/update-last', {
+                await axios.post('http://localhost:5555/update-last', {
                     workspaceSlug: this.slug,
                     threadSlug: threadSlug,
                     lastMessage: lastMessage // 可选的最后一条消息
@@ -481,7 +521,7 @@ export default {
             }
             // 调用新建会话接口
             try {
-                const response = await axios.post('http://192.168.31.140:5555/new',
+                const response = await axios.post('http://localhost:5555/new',
                     {
                         slug: this.slug, // 使用指定的 slug
                         model: this.newselect, // 使用选中的模型
@@ -526,7 +566,7 @@ export default {
 
                 const response = await axios({
                     method: 'POST',
-                    url: 'http://192.168.31.140:5555/get-list',
+                    url: 'http://localhost:5555/get-list',
                     data: {
                         user_id: userId
                     },
@@ -631,7 +671,7 @@ export default {
             try {
                 const response = await axios({
                     method: 'DELETE',
-                    url: 'http://192.168.31.140:5555/delete-session',
+                    url: 'http://localhost:5555/delete-session',
                     data: payload, // 传递要删除的会话 ID
                     headers: {
                         "Content-Type": "application/json"
@@ -660,14 +700,7 @@ export default {
         },
 
 
-        //setting弹窗
-        aisetForm() {
-            this.goForward({
-                name: 'manage-aisetting',
-                // params: { newselect: this.newselect } // 传递选择的模型
-
-            });
-        },
+       
         //底部输入工具栏
         onToolbar(action) {
             this.hidePopover();
