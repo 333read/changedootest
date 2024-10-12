@@ -1,3 +1,4 @@
+
 export default [
     {
         name: 'index',
@@ -133,6 +134,7 @@ export default [
                 component: () => import('./pages/manage/application.vue'),
             },
             // 20240914 by hss aiassistant
+            
             {
                 name: 'manage-aiassistant',
                 path: 'aiassistant',

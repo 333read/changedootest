@@ -82,7 +82,7 @@
                             <div 
                                 v-if="contextMenuVisible" 
                                 class="click-menu" 
-                                :style="{ top: `${contextMenuY}px`, left: `${contextMenuX}px` }"
+                                :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px', position: 'absolute' }"
                                 @click="deleteConversation"
                                 >
                                 <div>删除会话</div>
@@ -160,6 +160,8 @@ import { mapState } from 'vuex';
 import DrawerOverlay from '../../components/DrawerOverlay'
 import axios from "axios";
 import { data } from "jquery";
+// let hasRefreshed = false; // 状态标记
+
 export default {
     components: {
         DrawerOverlay,
@@ -228,6 +230,7 @@ export default {
             contextMenuY: 0, // 菜单 Y 坐标
             selectedConversation: null, // 选中的会话
             isLoading: false, // 加载动画
+
         }
     },
 
@@ -239,9 +242,26 @@ export default {
         if (newselect) {
             this.newselect = newselect; // 设置初始值
         }
-        this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
 
+        this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
+    
     },
+
+    // async beforeRouteEnter(to, from, next) {
+    //     console.log("路由进入")
+    //     // 在进入路由前触发
+    //     next(vm => {
+    //     // vm 是当前组件实例
+    //     vm.fetchData();
+    //     });
+    //     },
+    // beforeRouteLeave(to, from, next) {
+    //     // 在路由离开时移除监听器
+    //     console.log("在路由离开时移除监听器")
+    //     document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
+    //     next();
+    //     },
+
 
     mounted() {
         // 初始化会话出现前加载动画
@@ -270,13 +290,7 @@ export default {
                     this.newselect = 'Custom'; // 设置为 Custom 模型
                     this.startNewChat(); // 自动触发新建会话
                 }
-            }).catch(error => {
-                console.error("获取初始化session_id失败", error);
-                alert("暂时无与AI助手聊天的权限");
-                
-
-                
-            })
+            });
             this.isLoading = false; // 加载结束
 
             // 删除操作，右键菜单处理（点击其他地方关闭菜单）
@@ -287,6 +301,8 @@ export default {
     beforeDestroy() {
         document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
     },
+
+
 
     computed: {
         pasteTitle() {
@@ -304,9 +320,78 @@ export default {
             'userInfo',
         ])
     },
+
+    // watch: {
+    //     'userInfo.userid': {
+    //         handler(newValue, oldValue) {
+    //             if (newValue !== oldValue && !hasRefreshed) {
+    //                 hasRefreshed = true; // 设置标记为已刷新
+    //                 window.location.reload(); // 刷新页面
+    //             }
+    //         },
+    //         immediate: true, // 在组件加载时立即执行
+    //     },
+    // },
+
     methods: {
-        //权限判断
-        async checkPermission() {
+        //每次路由切换刷新
+        // fetchData(){
+        //     this.isLoading = true;
+        //     this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
+
+        //     // 初始检查 userid
+        //     this.checkUserId();
+
+        //     // 初始化会话
+        //     this.initSession();
+
+        //     // 删除操作，右键菜单处理（点击其他地方关闭菜单）
+        //     document.addEventListener('click', this.closeContextMenu);
+        // },
+
+        // //刷新对话
+        // checkUserId() {
+        //     // 检查 userid 是否存在
+        //     if (this.userInfo && this.userInfo.userid) {
+        //         this.slug = "workspace-for-user-" + this.userInfo.userid; // 更新 slug
+        //         // window.location.reload(); // 刷新页面
+        //     }
+            
+        // },
+        // //初始化会话
+        // initSession() {
+        //     // 初始化会话
+        //     axios.post(`http://192.168.31.140:5555/get-sessionid`,
+        //         { user_id: this.userInfo.userid },
+        //         {
+        //             headers: {
+        //                 'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
+        //                 'Content-Type': 'application/json',
+        //             }
+        //         }).then(response => {
+        //             console.log('Response:', response.data);
+
+        //             if (response.data.session_id) {
+        //                 const item = response.data;
+        //                 const temp = {
+        //                     "thread_slug": item.session_id,
+        //                     "avatar": item.avatar,
+        //                     "modelName": item.model,
+        //                     "lastMessage": item.last_messages,
+        //                     "updatedAt": item.update_time
+        //                 };
+        //                 this.loadConversation(temp, true);
+        //             } else {
+        //                 this.newselect = 'Custom'; // 设置为 Custom 模型
+        //                 this.startNewChat(); // 自动触发新建会话
+        //             }
+        //         }).finally(() => {
+        //             this.isLoading = false; // 加载结束
+        //         });
+        // },
+
+         //权限判断
+         async checkPermission() {
             const url = `http://192.168.31.140:5555/get-user`;
             try {
                 const response = await axios.post(url,
@@ -320,7 +405,6 @@ export default {
                 return false; // 返回 false 表示权限检查失败
             }
         },
-
 
         //下拉框的模型选择，对应setting的模型选择   
         async onOptionChange() {
@@ -390,6 +474,7 @@ export default {
 
 
 
+
         //机器人回复消息存在代码内容进行解析
         sanitizedBotMessage(text) {
             return DOMPurify.sanitize(renderMarkdown(text));
@@ -448,7 +533,7 @@ export default {
                     console.log('查看是否带admin标识',this.userInfo);
 
                 } else if(authResponse.data.is_create === false) {
-                    consol.log('无权限')
+                    console.log('无权限')
                     this.messages.push({
                         text: "抱歉，此用户无聊天权限。",
                         isBot: true,
@@ -502,6 +587,7 @@ export default {
         async startNewChat() {
             if (!this.newselect) return; // 确保选中了模型
 
+            console.log('查看当前工作区',this.slug);
             // 确保获取当前会话的 thread_slug
             const currentThreadSlug = this.thread_slug; // 使用可选链防止错误
             if (!currentThreadSlug) {
@@ -659,13 +745,26 @@ export default {
         showContextMenu(event, conversation) {
             event.preventDefault(); // 阻止网页自带的右键菜单
 
-            this.contextMenuX = event.clientX - 1400; // 相对 X 坐标
-            this.contextMenuY = event.clientY - 50; // 相对 Y 坐标
+            const menuWidth = 150; // 菜单宽度
+            const menuHeight = 40; // 菜单高度
+
+            // 获取目标元素的位置
+            const targetElement = event.currentTarget; // 这里可以使用 currentTarget 获取绑定事件的元素
+            const rect = targetElement.getBoundingClientRect();
+
+            // 计算相对坐标
+            const offsetX = event.clientX - rect.left; // 鼠标相对元素的 X 坐标
+            const offsetY = event.clientY - rect.top;  // 鼠标相对元素的 Y 坐标
+
+            // 计算菜单的显示位置，确保不超出边界
+            this.contextMenuX = Math.min(offsetX, rect.width - menuWidth);
+            this.contextMenuY = Math.min(offsetY, rect.height - menuHeight);
 
             this.contextMenuVisible = true; // 显示右键菜单
             this.selectedConversation = conversation; // 存储选中的会话
             console.log('查看删除id:', this.selectedConversation.thread_slug);
         },
+
 
         //右键菜单点击删除操作
         async deleteConversation() {
@@ -702,9 +801,6 @@ export default {
             this.contextMenuVisible = false; 
             this.selectedConversation = null; // 清空选中的会话
         },
-
-
-       
         //底部输入工具栏
         onToolbar(action) {
             this.hidePopover();

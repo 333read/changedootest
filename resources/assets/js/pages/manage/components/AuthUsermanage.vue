@@ -994,7 +994,7 @@ export default {
 
         //在这里写authUser
         async authUser(data) {
-            const apiUrl = 'http://127.0.0.1:5555/set';
+            const apiUrl = 'http://192.168.31.140:5555/set';
             try {
                 const response = await axios.post(apiUrl, {
                     user_id: data.userid,
