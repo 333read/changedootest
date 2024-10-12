@@ -247,7 +247,7 @@ export default {
         // 初始化会话出现前加载动画
         this.isLoading = true;
         // 初始化若已存在历史会话，则自动加载，否则新建
-        const response = axios.post(`http://localhost:5555/get-sessionid`,
+        const response = axios.post(`http://192.168.31.140:5555/get-sessionid`,
             {user_id: this.userInfo.userid},
             {
                 headers: {
@@ -272,7 +272,9 @@ export default {
                 }
             }).catch(error => {
                 console.error("获取初始化session_id失败", error);
-                // alert("暂时无与AI助手聊天的权限");
+                alert("暂时无与AI助手聊天的权限");
+                
+
                 
             })
             this.isLoading = false; // 加载结束
@@ -305,7 +307,7 @@ export default {
     methods: {
         //权限判断
         async checkPermission() {
-            const url = `http://localhost:5555/get-user`;
+            const url = `http://192.168.31.140:5555/get-user`;
             try {
                 const response = await axios.post(url,
                 { user_id: this.userInfo.userid }, 
@@ -415,12 +417,13 @@ export default {
 
             //权限处理
             try {
-                const authResponse = await axios.post('http://localhost:5555/get-user',
+                const authResponse = await axios.post('http://192.168.31.140:5555/get-user',
                     { user_id: this.userInfo.userid },
                     { headers: { 'Content-Type': 'application/json', } });
                 if (authResponse.data.is_create) { // 假设返回的权限字段为hasPermission
                     console.log('获取', this.thread_slug)
                     //chat请求(临时的开启服务器解决跨域)
+
                     const response = await axios.post(`http://103.63.139.165:3001/api/v1/workspace/${this.slug}/thread/${this.thread_slug}/chat`,
                         {
                             message: userMessage,
@@ -444,7 +447,8 @@ export default {
                     });
                     console.log('查看是否带admin标识',this.userInfo);
 
-                } else if(response.error.response.status === 500) {
+                } else if(authResponse.data.is_create === false) {
+                    consol.log('无权限')
                     this.messages.push({
                         text: "抱歉，此用户无聊天权限。",
                         isBot: true,
@@ -471,7 +475,7 @@ export default {
         //更新最后一条信息保存到数据库
         async updateLastMessage(threadSlug, lastMessage = '') {
             try {
-                await axios.post('http://localhost:5555/update-last', {
+                await axios.post('http://192.168.31.140:5555/update-last', {
                     workspaceSlug: this.slug,
                     threadSlug: threadSlug,
                     lastMessage: lastMessage // 可选的最后一条消息
@@ -521,7 +525,7 @@ export default {
             }
             // 调用新建会话接口
             try {
-                const response = await axios.post('http://localhost:5555/new',
+                const response = await axios.post('http://192.168.31.140:5555/new',
                     {
                         slug: this.slug, // 使用指定的 slug
                         model: this.newselect, // 使用选中的模型
@@ -566,7 +570,7 @@ export default {
 
                 const response = await axios({
                     method: 'POST',
-                    url: 'http://localhost:5555/get-list',
+                    url: 'http://192.168.31.140:5555/get-list',
                     data: {
                         user_id: userId
                     },
@@ -671,7 +675,7 @@ export default {
             try {
                 const response = await axios({
                     method: 'DELETE',
-                    url: 'http://localhost:5555/delete-session',
+                    url: 'http://192.168.31.140:5555/delete-session',
                     data: payload, // 传递要删除的会话 ID
                     headers: {
                         "Content-Type": "application/json"
