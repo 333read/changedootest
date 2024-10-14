@@ -121,7 +121,7 @@
                             <Badge class="menu-badge" :overflow-count="999" :text="String((reportUnreadNumber + approveUnreadNumber) || '')"/>
                         </li>
                         <!--20240914 by hss AI助手 -->
-                        <li @click="toggleRoute('aiassistant')" :class="classNameRoute('aiassistant')">
+                        <li @click="toggleRoute('aiassistant')"  :class="classNameRoute('aiassistant')">
                             <i class="taskfont">&#xe6ef;</i>
                             <div class="menu-title">{{$L('AI助手')}}</div>
                             <Badge class="menu-badge" :count="999"/>
@@ -773,6 +773,12 @@ export default {
     },
 
     methods: {
+
+        
+
+
+
+
         chackPass() {
             if (this.userInfo.changepass === 1) {
                 this.goForward({name: 'manage-setting-password'});
@@ -787,6 +793,7 @@ export default {
                 location.params.folderId = fileFolderId
             }
             this.goForward(location);
+
         },
 
         toggleOpenMenu(id) {

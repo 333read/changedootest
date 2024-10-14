@@ -46,12 +46,6 @@
                     <el-form v-if="selectedLLM === 'openai'" :model="openAISettings">
                         <Row class="aiassistant-form-row">
                             <Col flex="200px">
-                                <el-form-item label="API Key">
-                                    <Input class="form-input" v-model="openAISettings.apiKey" type="password" size="large" />
-                                </el-form-item>
-                            </Col>
-                            <Col flex="100px"></Col>
-                            <Col flex="200px">
                                 <el-form-item label="Chat Model Selection">
                                     <el-select v-model="openAISettings.model" class="form-select">
                                         <el-option label="gpt-3.5-turbo" value="gpt-3.5-turbo"></el-option>
@@ -59,16 +53,17 @@
                                     </el-select>
                                 </el-form-item>
                             </Col>
+                            <Col flex="100px"></Col>
+                            <Col flex="200px">
+                                <el-form-item label="API Key" v-if="isAdmin">
+                                    <Input class="form-input" v-model="openAISettings.apiKey" type="password" size="large" />
+                                </el-form-item>
+                            </Col>
                         </Row>    
                     </el-form>
                     <el-form v-if="selectedLLM === 'gemini'" :model="geminiSettings">
                         <Row class="aiassistant-form-row" >
-                            <Col flex="200px">
-                                <el-form-item label="API Key">
-                                    <Input v-model="geminiSettings.apiKey"  class="form-input" type="password" size="large" />
-                                </el-form-item>
-                            </Col>
-                            <Col flex="100px"></Col>
+                            
                             <Col flex="200px">
                                 <el-form-item label="Chat Model Selection">
                                     <el-select v-model="geminiSettings.model" class="form-select">
@@ -82,7 +77,13 @@
                             </Col>
                             <Col flex="100px"></Col>
                             <Col flex="200px">
-                                <el-form-item label="Safety Setting">
+                                <el-form-item label="API Key" v-if="isAdmin">
+                                    <Input v-model="geminiSettings.apiKey"  class="form-input" type="password" size="large" />
+                                </el-form-item>
+                            </Col>
+                            <Col flex="100px"></Col>
+                            <Col flex="200px">
+                                <el-form-item label="Safety Setting" v-if="isAdmin">
                                     <el-select v-model="geminiSettings.safeset" class="form-select">
                                         <el-option label="None" value="None"></el-option>
                                         <el-option label="Block few" value="Block few"></el-option>
@@ -108,7 +109,7 @@
                             </Col>
                             <Col flex="100px"></Col>
                             <Col flex="200px">
-                                <el-form-item label="Max Token">
+                                <el-form-item label="Max Token" >
                                     <InputNumber v-model="ollamaSettings.maxToken" size="large" class="form-input" />
                                     <p class="form-desc">Maximum number of tokens for context and response.</p>
                                 </el-form-item>
@@ -117,7 +118,7 @@
                             
                         </Row>
                         <Row>
-                            <div class="showtoggle">
+                            <div class="showtoggle" v-if="isAdmin">
                                 <div class="ToggleBtn" @click="toggle">
                                     {{ isExpanded ? 'Hide advanced settings' : 'Show advanced settings' }}
                                     <span v-if="isExpanded"><Icon type="ios-arrow-up" /></span>
@@ -268,6 +269,7 @@ export default {
                 ],
                 isExpanded: false, // 控制下拉菜单的显示与隐藏
                 slug: "workspace-for-user-1", // 工作区设置
+                isAdmin: false,// 是否是管理员
             }
         },
 
@@ -279,7 +281,9 @@ export default {
             }
             this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
         },
-
+        mounted() {
+                this.checkAdmin(); // 初始挂载检查是否是管理员
+            },
 
         computed: {
             ...mapState(['userInfo']),
@@ -296,6 +300,30 @@ export default {
         },
 
         methods:{
+
+            //用户可见性
+            async checkAdmin() {
+            try {
+                console.log('检查id',this.userInfo.userid)
+                const response = await fetch('http://192.168.31.140:5555/is-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: this.userInfo.userid })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                this.isAdmin = data.is_admin; // 假设接口返回包含 isAdmin 字段
+        
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+            }
+        },
 
             aimodalselect(item){
                 console.log("aimodalselect", item)
