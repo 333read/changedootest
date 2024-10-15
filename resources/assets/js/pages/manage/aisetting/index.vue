@@ -49,7 +49,7 @@
                                 <el-form-item label="Chat Model Selection">
                                     <el-select v-model="openAISettings.model" class="form-select">
                                         <el-option label="gpt-3.5-turbo" value="gpt-3.5-turbo"></el-option>
-                                        <el-option label="gpt-4" value="gpt-4"></el-option>
+                                        <el-option label="gpt-4o" value="gpt-4o"></el-option>
                                     </el-select>
                                 </el-form-item>
                             </Col>
@@ -85,10 +85,10 @@
                             <Col flex="200px">
                                 <el-form-item label="Safety Setting" v-if="isAdmin">
                                     <el-select v-model="geminiSettings.safeset" class="form-select">
-                                        <el-option label="None" value="None"></el-option>
-                                        <el-option label="Block few" value="Block few"></el-option>
-                                        <el-option label="Block some(default)" value="Block some(default)"></el-option>
-                                        <el-option label="Block most" value="Block most"></el-option>
+                                        <el-option label="None" value="BLOCK_NONE"></el-option>
+                                        <el-option label="Block few" value="BLOCK_ONLY_HIGH"></el-option>
+                                        <el-option label="Block some(default)" value="BLOCK_MEDIUM_AND_ABOVE"></el-option>
+                                        <el-option label="Block most" value="BLOCK_LOW_AND_ABOVE"></el-option>
                                     </el-select>
                                 </el-form-item>
                             </Col>
@@ -101,8 +101,8 @@
                                 <el-form-item label="Ollama Modal">
                                     <el-select v-model="ollamaSettings.model" class="form-select">
                                         <el-option label="glm4:9b" value="glm4:9b"></el-option>
-                                        <el-option label="mxbai-embed-large:latest" value="mxbai-embed-large:latest"></el-option>
-                                        <el-option label="nomic-embed-text:latest" value="nomic-embed-text:latest"></el-option>
+                                        <el-option label="mxbai-embed-large:latest" value="glm4:9b"></el-option>
+                                        <el-option label="nomic-embed-text:latest" value="glm4:9b"></el-option>
                                     </el-select>
                                     <p class="form-desc">Choose the Ollama model you want to use for your conversations.</p>
                                 </el-form-item>
@@ -136,9 +136,10 @@
                                         <Col flex="200px">
                                             <el-form-item label="Ollama Keep Alive">  
                                                 <el-select v-model="ollamaSettings.Alive" class="form-select">
-                                                    <el-option label="Forever" value="Forever"></el-option>
-                                                    <el-option label="1 hour" value="1 hour"></el-option>
-                                                    <el-option label="5 minutes" value="5 minutes"></el-option>
+                                                    <el-option label="Forever" value="-1"></el-option>
+                                                    <el-option label="1 hour" value="3600"></el-option>
+                                                    <el-option label="5 minutes" value="300"></el-option>
+                                                    <el-option label="No cache" value="0"></el-option>
                                                 </el-select>
                                                 <p class="form-desc">Choose the Ollama model you want to use for your conversations.</p>
                                             </el-form-item>
@@ -147,8 +148,8 @@
                                         <Col flex="200px">
                                             <el-form-item label="Performance Mode">  
                                                 <el-select v-model="ollamaSettings.Mode"  prop="selollPM" class="form-select">
-                                                    <el-option label="Base(Default)" value="Base(Default)"></el-option>
-                                                    <el-option label="maximum" value="maximum"></el-option>
+                                                    <el-option label="Base(Default)" value="base"></el-option>
+                                                    <el-option label="maximum" value="Maximum"></el-option>
                                                 </el-select>
                                                 <p class="form-desc">Choose the performance mode for the Ollama model.</p>
                                             </el-form-item>
@@ -193,23 +194,23 @@ import axios from 'axios';
 
 export default {
     props:{
-        chatlabel: {
-            default: 'ChatGPT',
-            type: String
-        },
-        chatscr: {
-            default: '/images/avatar/default_openai.png',
-            type: String
-        },
-        chatdesc: {
-            default: 'The fastest LLM inferencing available for real-time AI applications.',
-            type: String
-        },
-        selectedLLM:{
-            default: 'openai',
-            type: String,
-            // required: true
-        }
+            chatlabel: {
+                default: 'ChatGPT',
+                type: String
+            },
+            chatscr: {
+                default: '/images/avatar/default_openai.png',
+                type: String
+            },
+            chatdesc: {
+                default: 'The fastest LLM inferencing available for real-time AI applications.',
+                type: String
+            },
+            selectedLLM:{
+                default: 'openai',
+                type: String,
+                // required: true
+            }
         },
     
     data() {
@@ -302,7 +303,9 @@ export default {
         methods:{
 
             //用户可见性
-            async checkAdmin() {
+
+
+        async checkAdmin() {
             try {
                 console.log('检查id',this.userInfo.userid)
                 const response = await fetch('http://192.168.31.140:5555/is-admin', {
@@ -344,32 +347,34 @@ export default {
             //确定提交表单时
             async submitForm() {
                 const workspaceSlug = this.slug; // 替换为你的 workspace slug
-                const url = `http://103.63.139.165:3001/api/v1/workspace/${workspaceSlug}/update`;
+                const url = `http://103.63.139.165:3001/api/v1/system/update-env`;
                 
                 let paymodal;
 
                 switch (this.selectedLLM) {
                     case 'openai':
                         paymodal = {
-                                chatProvider: 'openai',
-                                chatModel: this.openAISettings.model,
-                                apiKey: this.openAISettings.apiKey,
+                                LLMProvider: 'openai',
+                                OpenAiKey: 'sk-' + this.openAISettings.apiKey,
+                                OpenAiModelPref: this.openAISettings.model,
                             };
                             break;
                     case 'gemini':
                         paymodal = {
-                                chatProvider: 'gemini',
-                                chatModel: this.geminiSettings.model,
-                                apiKey: this.geminiSettings.apiKey,
-                                safeset: this.geminiSettings.safeset,
+                                LLMProvider: 'gemini',
+                                GeminiLLMModelPref: this.geminiSettings.model,
+                                GeminiLLMApiKey: this.geminiSettings.apiKey,
+                                GeminiSafetySetting: this.geminiSettings.safeset,
                             };
                         break;
                     case 'ollama':
                         paymodal = {
-                                chatProvider: 'ollama',
-                                chatModel: this.ollamaSettings.model,
-                                maxToken: this.ollamaSettings.maxToken,
-                                baseUrl: this.ollamaSettings.baseUrl,
+                                LLMProvider: 'ollama',
+                                OllamaLLMModelPref: this.ollamaSettings.model,
+                                OllamaLLMTokenLimit: this.ollamaSettings.maxToken,
+                                OllamaLLMBasePath: this.ollamaSettings.baseUrl,
+                                OllamaLLMKeepAliveSeconds: this.ollamaSettings.Alive,
+                                OllamaLLMPerformanceMode: this.ollamaSettings.Mode,
                             };
                         break;
                     default:

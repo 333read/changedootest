@@ -231,6 +231,7 @@ export default {
             isLoading: false, // 加载动画
 
             contextMenuStyles: {},
+            shouldReload: false, // 用于控制是否需要刷新
 
 
         }
@@ -258,8 +259,6 @@ export default {
             return; // 退出函数
         }
         this.initSession();
-
-
         this.isLoading = false; // 加载结束
 
         // 删除操作，右键菜单处理（点击其他地方关闭菜单）
@@ -267,10 +266,26 @@ export default {
 
     },
 
-    beforeDestroy() {
-        document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
-    },
 
+    async beforeRouteEnter(to, from, next) {
+            console.log("路由进入")
+            // 在进入路由前触发
+                next(vm => {
+                    vm.fetchData(); // 调用 fetchData 方法
+                // vm 是当前组件实例
+                // if (vm.shouldReload) {
+                //     vm.shouldReload = false; // 重置标志
+                //     window.location.reload(); // 刷新页面
+                // } else {
+                // }
+            });
+    },
+    beforeRouteLeave(to, from, next) {
+        // 在路由离开时移除监听器
+        console.log("在路由离开时移除监听器")
+        document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
+        next();
+    },
 
     computed: {
         pasteTitle() {
@@ -289,9 +304,37 @@ export default {
         ])
     },
 
-   
-
     methods: {
+        // 用户切换时获取数据
+        fetchData(){
+            this.isLoading = true;
+            this.messages = [];//初始化信息为空
+            this.historyConversations = []//初始化历史记录为空
+            this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
+
+            // 初始检查 userid
+            this.checkUserId();
+
+            // 设置为需要刷新
+            this.shouldReload = true;
+
+            // 初始化会话
+            this.initSession();
+
+            this.isLoading = false;
+            // 删除操作，右键菜单处理（点击其他地方关闭菜单）
+            document.addEventListener('click', this.closeContextMenu);
+        },
+
+        // //刷新对话
+        checkUserId() {
+            if (this.userInfo && this.userInfo.userid) {
+                this.slug = "workspace-for-user-" + this.userInfo.userid;
+            } else {
+                console.error("用户 ID 不存在");
+            }
+        },
+
 
         //初始化会话
         initSession() {
@@ -413,24 +456,62 @@ export default {
             }
         },
 
-        //当setting子组件模型选择变化，父组件也同步更新
-        updateSelectSetting(newValue) {
-            this.selectsetting = newValue; // 更新父组件的选择
+        //权限判断，当前用户是否为管理员
+        async checkAdmin() {
+            try {
+                console.log('检查id',this.userInfo.userid)
+                const response = await fetch('http://192.168.31.140:5555/is-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: this.userInfo.userid })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                this.isAdmin = data.is_admin; // 假设接口返回包含 isAdmin 字段
+        
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+            }
         },
 
-        //setting弹窗
-        //增加权限判断，只有管理员和有权限的用户才可以进行模型设置
+        //增加权限判断，只有管理员才可以进行模型设置
         async aisetForm() {
-            const hasPermission = await this.checkPermission();
-            if (hasPermission) {
-                // 有权限，进行跳转
-                this.goForward({
-                    name: 'manage-aisetting',
+            try {
+                console.log('检查id',this.userInfo.userid)
+                const response = await fetch('http://192.168.31.140:5555/is-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: this.userInfo.userid })
                 });
-            } else {
-                // 没有权限，弹出提示
-                alert('您没有权限访问此页面');
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                this.isAdmin = data.is_admin; // 假设接口返回包含 isAdmin 字段
+                if (this.isAdmin) {
+                    // 有权限，进行跳转
+                    this.goForward({
+                        name: 'manage-aisetting',
+                    });
+                } else {
+                    // 没有权限，弹出提示
+                    alert('您没有权限进入配置哦😯');
+                }
+        
+            } catch (error) {
+                console.error('Error checking admin status:', error);
             }
+            
         },
 
         //机器人回复消息存在代码内容进行解析
@@ -870,6 +951,4 @@ export default {
 }
 </script>
 
-<style>
 
-</style>
