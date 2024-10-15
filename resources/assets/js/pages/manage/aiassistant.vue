@@ -56,16 +56,16 @@
 
                 </div>
 
-                <DrawerOverlay ref="drawer" v-model="drawerVisible" placement="right" :size="650">
-                    <div class="ivu-modal-wrap-aiass">
+                <DrawerOverlay v-model="drawerVisible" placement="right" :size="650">
+                    <div  class="ivu-modal-wrap-aiass">
                         <div class="ivu-modal-wrap-aiass-title">
                             {{ $L('历史会话记录') }}
                         </div>
-                        <div class="ivu-modal-wrap-aiass-body">
+                        <div ref="drawerBody" class="ivu-modal-wrap-aiass-body">
                             <div class="history-list">
                                 <!--  右键删除操作showContextMenu($event, conversation) 切换会话操作loadConversation(conversation)-->
                                 <div v-for="conversation in historyConversations" :key="conversation.thread_slug"
-                                    @contextmenu.prevent="showContextMenu($event, conversation)"
+                                    @contextmenu.prevent="handleRightClick($event, conversation)"
                                     @click="loadConversation(conversation)" class="history-item">
                                     <img v-if="conversation.avatar" :src="conversation.avatar" alt="Bot Avatar"
                                         class="history-avatar" />
@@ -76,11 +76,13 @@
                                     </div>
                                 </div>
                             </div>
-                            <!-- 右键菜单 点击操作deleteConversation -->
-                            <div v-if="contextMenuVisible" class="click-menu"
-                                :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px', position: 'absolute' }"
-                                @click="deleteConversation">
-                                <div>删除会话</div>
+                            <!-- 右键菜单 -->
+                            <div 
+                                v-if="contextMenuVisible" 
+                                :style="contextMenuStyles"
+                                class="click-menu"
+                            >
+                                <div @click="deleteConversation">删除会话</div>
                             </div>
                         </div>
                     </div>
@@ -156,6 +158,7 @@ import DrawerOverlay from '../../components/DrawerOverlay'
 import axios from "axios";
 import { data } from "jquery";
 import createCopyCodePlugin from '@kangc/v-md-editor/lib/plugins/copy-code/index';
+import { DropdownMenu } from 'view-design-hi';
 // let hasRefreshed = false; // 状态标记
 
 export default {
@@ -227,12 +230,11 @@ export default {
             selectedConversation: null, // 选中的会话
             isLoading: false, // 加载动画
 
-            containerRect: null,//容器存储视口的位置和大小信息容器
+            contextMenuStyles: {},
 
 
         }
     },
-
 
     //0922
     created() {
@@ -241,31 +243,10 @@ export default {
         if (newselect) {
             this.newselect = newselect; // 设置初始值
         }
-
         this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
-
     },
 
-    // async beforeRouteEnter(to, from, next) {
-    //     console.log("路由进入")
-    //     // 在进入路由前触发
-    //     next(vm => {
-    //     // vm 是当前组件实例
-    //     vm.fetchData();
-    //     });
-    //     },
-    // beforeRouteLeave(to, from, next) {
-    //     // 在路由离开时移除监听器
-    //     console.log("在路由离开时移除监听器")
-    //     document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
-    //     next();
-    //     },
-
-
     mounted() {
-
-        console.log('ref是否正确设置', this.$refs); // 查看所有 refs
-
         // 初始化会话出现前加载动画
         this.isLoading = true;
         // 初始化若已存在历史会话，则自动加载，否则新建
@@ -276,6 +257,44 @@ export default {
             this.isLoading = false; // 加载结束
             return; // 退出函数
         }
+        this.initSession();
+
+
+        this.isLoading = false; // 加载结束
+
+        // 删除操作，右键菜单处理（点击其他地方关闭菜单）
+        document.addEventListener('click', this.closeContextMenu);
+
+    },
+
+    beforeDestroy() {
+        document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
+    },
+
+
+    computed: {
+        pasteTitle() {
+            const { pasteItem } = this;
+            let hasImage = pasteItem.find(({ type }) => type == 'image')
+            let hasFile = pasteItem.find(({ type }) => type != 'image')
+            if (hasImage && hasFile) {
+                return '发送文件/图片'
+            } else if (hasImage) {
+                return '发送图片'
+            }
+            return '发送文件'
+        },
+        ...mapState([
+            'userInfo',
+        ])
+    },
+
+   
+
+    methods: {
+
+        //初始化会话
+        initSession() {
         const response = axios.post(`http://192.168.31.140:5555/get-sessionid`,
             { user_id: this.userInfo.userid },
             {
@@ -298,126 +317,14 @@ export default {
 
                 } else if (!response.data) {
                     console.log('哪去了', response.data)
-                    //create new session
+                    //把初始化（创建工作区->新建会话）统一封装
                     this.newinit();                    
-                    // this.createWorkspace();
-                    // this.newselect = 'Custom'; // 设置为 Custom 模型
-                    // this.startNewChat(); // 自动触发新建会话
+                    
                 }
             });
-
-
-        this.isLoading = false; // 加载结束
-
-        // 删除操作，右键菜单处理（点击其他地方关闭菜单）
-        document.addEventListener('click', this.closeContextMenu);
-
-    },
-
-    beforeDestroy() {
-        document.removeEventListener('click', this.closeContextMenu); // 清理事件监听器
-    },
-
-
-
-    computed: {
-        pasteTitle() {
-            const { pasteItem } = this;
-            let hasImage = pasteItem.find(({ type }) => type == 'image')
-            let hasFile = pasteItem.find(({ type }) => type != 'image')
-            if (hasImage && hasFile) {
-                return '发送文件/图片'
-            } else if (hasImage) {
-                return '发送图片'
-            }
-            return '发送文件'
         },
-        ...mapState([
-            'userInfo',
-        ])
-    },
 
-    // watch: {
-    //     'userInfo.userid': {
-    //         handler(newValue, oldValue) {
-    //             if (newValue !== oldValue && !hasRefreshed) {
-    //                 hasRefreshed = true; // 设置标记为已刷新
-    //                 window.location.reload(); // 刷新页面
-    //             }
-    //         },
-    //         immediate: true, // 在组件加载时立即执行
-    //     },
-    // },
-
-    methods: {
-
-        //每次路由切换刷新
-        // fetchData(){
-        //     this.isLoading = true;
-        //     this.slug = "workspace-for-user-" + this.userInfo.userid; // 获取当前会话的 slug
-
-        //     // 初始检查 userid
-        //     this.checkUserId();
-
-        //     // 初始化会话
-        //     this.initSession();
-
-        //     // 删除操作，右键菜单处理（点击其他地方关闭菜单）
-        //     document.addEventListener('click', this.closeContextMenu);
-        // },
-
-        // // //刷新对话
-        // checkUserId() {
-        //     // 检查 userid 是否存在
-        //     if (this.userInfo && this.userInfo.userid) {
-        //         this.slug = "workspace-for-user-" + this.userInfo.userid; // 更新 slug
-        //         // window.location.reload(); // 刷新页面
-        //         let refreshTimeout = null;
-
-        //     if (refreshTimeout) {
-        //         clearTimeout(refreshTimeout);
-        //     }
-        //     refreshTimeout = setTimeout(() => {
-        //         window.location.reload();
-        //     }, 200); // 200毫秒后刷新
-
-
-        //     }
-
-
-        // //初始化会话
-        // initSession() {
-        //     // 初始化会话
-        //     axios.post(`http://192.168.31.140:5555/get-sessionid`,
-        //         { user_id: this.userInfo.userid },
-        //         {
-        //             headers: {
-        //                 'Authorization': 'Bearer VREQHX8-PTGMW06-P9T61XE-BWG31ZW',
-        //                 'Content-Type': 'application/json',
-        //             }
-        //         }).then(response => {
-        //             console.log('Response:', response.data);
-
-        //             if (response.data.session_id) {
-        //                 const item = response.data;
-        //                 const temp = {
-        //                     "thread_slug": item.session_id,
-        //                     "avatar": item.avatar,
-        //                     "modelName": item.model,
-        //                     "lastMessage": item.last_messages,
-        //                     "updatedAt": item.update_time
-        //                 };
-        //                 this.loadConversation(temp, true);
-
-        //             }else{
-        //                 this.newselect = 'Custom'; // 设置为 Custom 模型
-        //                 this.startNewChat(); // 自动触发新建会话
-        //             }
-        //         })
-        //             this.isLoading = false; // 加载结束
-        // },
-
-        //初始化新建封装
+        //初始化(创建工作区->加载会话)新建封装
         async newinit(){
             const hasworkspace = await this.createWorkspace();
             if (hasworkspace) {
@@ -425,7 +332,6 @@ export default {
                 this.startNewChat(); // 自动触发新建会话
             }
         },
-
 
         //创建工作区接口
         async createWorkspace() {
@@ -635,7 +541,7 @@ export default {
         openModelSelection() {
             this.newchat = true; // 打开模型选择对话框
         },
-        //新建聊天确定时
+        //新建选模型后聊天确定时
         async startNewChat() {
             if (!this.newselect) return; // 确保选中了模型
 
@@ -795,51 +701,24 @@ export default {
         },
 
 
-
-        updateContainerRect() {
-            // 确保 ref 已定义
-            const drawerElement = this.$refs.drawer ? this.$refs.drawer.$el : null;
-            if (drawerElement) {
-                // 获取容器的边界信息
-                this.containerRect = drawerElement.getBoundingClientRect();
-            }
-            console.log('containerRect:', this.containerRect);
-        },
-
-
-
-        //历史列表右键菜单
-        showContextMenu(event, conversation) {
-            event.preventDefault(); // 阻止网页自带的右键菜单
-
-            const menuWidth = 150; // 菜单宽度
-            const menuHeight = 40; // 菜单高度
-
-            // 计算菜单的显示位置
-            let menuX = event.clientX; // 鼠标相对于视口的 X 坐标
-            let menuY = event.clientY; // 鼠标相对于视口的 Y 坐标
-            console.log('menuX', menuX);
-            console.log('menuY', menuY);
-
-            // // 确保菜单不超出容器的右边界
-            // if (menuX + menuWidth > this.containerRect.right) {
-            //     menuX = this.containerRect.right - menuWidth;
-            // }
-
-            // // 确保菜单不超出容器的下边界
-            // if (menuY + menuHeight > this.containerRect.bottom) {
-            //     menuY = this.containerRect.bottom - menuHeight;
-            // }
-
-
-
-            // 设置菜单位置和可见性
-            this.contextMenuX = menuX;
-            this.contextMenuY = menuY;
-
-            this.contextMenuVisible = true; // 显示右键菜单
-            this.selectedConversation = conversation; // 存储选中的会话
+        //历史列表右键菜单（删除展示）
+        handleRightClick(event, conversation) {
+            this.selectedConversation = conversation; // 设置当前选中的会话
             console.log('查看删除id:', this.selectedConversation.thread_slug);
+            this.contextMenuVisible = true; // 显示右键菜单
+            
+            const drawerBody = this.$refs.drawerBody;
+            console.log('坐标',this.$refs.drawerBody)
+
+            this.$nextTick(() => {
+                const drawerBody = this.$refs.drawerBody;
+                const drawerBounding = drawerBody.getBoundingClientRect();
+                this.contextMenuStyles = {
+                    left: `${event.clientX - drawerBounding.left}px`,
+                    top: `${event.clientY - drawerBounding.top}px`
+                };
+            });
+
         },
 
 
@@ -878,6 +757,7 @@ export default {
             this.contextMenuVisible = false;
             this.selectedConversation = null; // 清空选中的会话
         },
+
         //底部输入工具栏
         onToolbar(action) {
             this.hidePopover();
@@ -991,28 +871,5 @@ export default {
 </script>
 
 <style>
-.click-menu {
-    position: absolute;
-    background: rgb(248, 248, 248);
-    color: #000000;
-    border: 2px solid #63e47a;
-    ;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    display: block;
-    border-radius: 10px;
-}
 
-.click-menu div {
-    padding: 10px;
-    width: 150px;
-    height: 40px;
-    cursor: pointer;
-}
-
-.click-menu div:hover {
-    /* 悬停时效果 */
-    background-color: #86eeb7;
-    color: white;
-}
 </style>

@@ -69,8 +69,8 @@
                                     <el-select v-model="geminiSettings.model" class="form-select">
                                         <el-option label="gemini-pro" value="gemini-pro"></el-option>
                                         <el-option label="gemini-1.0-pro" value="gemini-1.0-pro"></el-option>
-                                        <el-option label="gemini-1.5-pro-lastest" value="gemini-1.5-pro-lastest"></el-option>
-                                        <el-option label="gemini-1.5-flash-lastest" value="gemini-1.5-flash-lastest"></el-option>
+                                        <el-option label="gemini-1.5-pro-latest" value="gemini-1.5-pro-latest"></el-option>
+                                        <el-option label="gemini-1.5-flash-latest" value="gemini-1.5-flash-latest"></el-option>
                                         <el-option label="gemini-1.5-pro-exp-0801" value="gemini-1.5-pro-exp-0801"></el-option>
                                     </el-select>
                                 </el-form-item>
@@ -102,7 +102,7 @@
                                     <el-select v-model="ollamaSettings.model" class="form-select">
                                         <el-option label="glm4:9b" value="glm4:9b"></el-option>
                                         <el-option label="mxbai-embed-large:latest" value="mxbai-embed-large:latest"></el-option>
-                                        <el-option label="mxbai-embed-text:latest" value="mxbai-embed-text:latest"></el-option>
+                                        <el-option label="nomic-embed-text:latest" value="nomic-embed-text:latest"></el-option>
                                     </el-select>
                                     <p class="form-desc">Choose the Ollama model you want to use for your conversations.</p>
                                 </el-form-item>

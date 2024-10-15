@@ -1033,6 +1033,7 @@ export default {
             if (this.contextMenuVisible) {
                 this.handleClickContextMenuOutside();
             }
+            console.log('坐标',this.$refs.fileWrapper)
             this.$nextTick(() => {
                 const fileWrap = this.$refs.fileWrapper;
                 const fileBounding = fileWrap.getBoundingClientRect();

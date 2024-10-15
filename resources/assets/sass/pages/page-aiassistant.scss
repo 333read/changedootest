@@ -265,6 +265,30 @@
                 color: #888; /* 时间颜色 */
             }
     }
+    .click-menu {
+        position: absolute;
+        background: rgb(248, 248, 248);
+        color: #000000;
+        border: 2px solid #dae4dc;
+        ;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        display: block;
+        // border-radius: 10px;
+    }
+    
+    .click-menu div {
+        padding: 10px;
+        width: 193px;
+        height: 40px;
+        cursor: pointer;
+    }
+    
+    .click-menu div:hover {
+        /* 悬停时效果 */
+        background-color: #aaaaaa;
+        color: white;
+    }
 
 }
 .loading-spinner {
